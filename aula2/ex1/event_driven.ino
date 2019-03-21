@@ -4,8 +4,9 @@
 
 int pinStates[3] = {-1, -1, -1};
 int pinDef[3] = {KEY1, KEY2, KEY3};
-unsigned long = timerStart;
-unsigned long = timeDuration;
+unsigned long timerStart;
+unsigned long timerDuration;
+unsigned long timeNow;
 
 int getPin(int pin) {
   switch (pin) {
@@ -26,6 +27,7 @@ void button_listen(int pin) {
 
 void timer_set(int ms) {
   timerStart = millis();
+  timerDuration = (long)(unsigned)ms;
 }
 
 
@@ -49,6 +51,9 @@ void loop() {
       }
     }
   }
-  //  timer_expired();
-}
 
+  timeNow=millis();
+  if(timeNow-timerStart>= timerDuration){
+    timer_expired();  
+  }
+}
