@@ -6,8 +6,3 @@ void leds_off(void);
 void mode(void);
 void play_alarm_song(void);
 void goto_next_mode(void);
-
-// TODO: make one function (same as timer_set)
-void buzzer_set(int ms);
-//void but2Handler(GFButton& event);
-//void but3Handler (GFButton& botaoDoEvento);
