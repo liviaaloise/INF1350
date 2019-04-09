@@ -152,9 +152,9 @@ void loop() {
 
     timeNow = millis();
 
-    if ((timeNow - lastDebounceTime) > debounceDelay){
-    //BUT 3
-    int but3 = digitalRead(KEY3);
+    if ((timeNow - lastDebounceTime) > debounceDelay) {
+      //BUT 3
+      int but3 = digitalRead(KEY3);
       if (but3 != currentStates[2]) {
         currentStates[2] = but3;
         if (but3 == HIGH) {
@@ -163,16 +163,29 @@ void loop() {
       }
       //BUT1+3
       int but1 = digitalRead(KEY1);
-      if (but3 && but1) {
-        leds_off();
-        modeIndex = 21;
+      if (but3 != currentStates[2] && but1 != currentStates[0]) {
+        currentStates[2] = but3;
+        currentStates[0] = but1;
+        if (but3 == HIGH && but1 == HIGH) {
+          leds_off();
+          modeIndex = 21;
+        }
+      }
+      //BUT2
+      int but2 = digitalRead(KEY2);
+      if (but2 != currentStates[1]) {
+        currentStates[1] = but2;
+        if (but2 == HIGH) {
+          leds_off();
+          but2Handler();
+        }
       }
 
     }
 
   }
 
-  
+
   //TODO: Fix debounce for all keys using an array
 
   timeNow = millis();
@@ -250,6 +263,67 @@ void loop() {
   digitalWrite(BUZZ, HIGH);
 }
 
+void but2Handler() {
+  modeIndex = modes[current_mode];
+  bool isClock = true;
+  switch (modeIndex) {
+    case SET_CLOCK_H:
+      clk_h0++;
+      break;
+    case SET_CLOCK_M:
+      clk_m0++;
+      break;
+    case SET_ALARM_H:
+      alm_h0++;
+      isClock = false;
+      break;
+    case SET_ALARM_M:
+      alm_m0++;
+      isClock = false;
+      break;
+  }
+  adjustTime(isClock);
+}
+
+void adjustTime(bool isClock) {
+  if (isClock) {
+    if (clk_m0 >= 10) {
+      clk_m0 = 0;
+      clk_m1 += 1;
+    }
+    if (clk_m1 >= 6) {
+      clk_m1 = 0;
+      clk_h0 += 1;
+    }
+    if (clk_h1 == 2 && clk_h0 >= 4) {
+      clk_h0 = 0;
+      clk_h1 = 0;
+    }
+    else if (clk_h0 >= 10) {
+      clk_h0 = 0;
+      clk_h1 += 1;
+    }
+  }
+  else {
+    if (alm_m0 >= 10) {
+      alm_m0 = 0;
+      alm_m1 += 1;
+    }
+    if (alm_m1 >= 6) {
+      alm_m1 = 0;
+      alm_h0 += 1;
+    }
+    if (alm_h1 == 2 && alm_h0 >= 4) {
+      alm_h0 = 0;
+      alm_h1 = 0;
+    }
+    else if (alm_h0 >= 10) {
+      alm_h0 = 0;
+      alm_h1 += 1;
+    }
+  }
+
+}
 /* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
 void WriteNumberToSegment(byte Segment, byte Value) {
   digitalWrite(LATCH_DIO, LOW);
