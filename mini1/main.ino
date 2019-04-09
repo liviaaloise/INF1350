@@ -56,7 +56,6 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 // ------------------------------ TODO: DEBOUNCE HANDLER
 
 
-//ShiftDisplay display(4, 7, 8, COMMON_ANODE, 4, true);
 int modes[7] = { CLOCK, ALARM_ON , ALARM, SET_CLOCK_H, SET_CLOCK_M, SET_ALARM_H, SET_ALARM_M };
 int modeIndex = 21;
 int aux = 0;
@@ -73,7 +72,7 @@ void update_time() {
     clk_h0 += 1;
   }
   if (clk_h1 == 2 && clk_h0 >= 4) {
-    clk_h0 =0;
+    clk_h0 = 0;
     clk_h1 = 0;
   }
   else if (clk_h0 >= 10) {
@@ -89,7 +88,7 @@ void show_time(int h1, int h0, int m1, int m0) {
   WriteNumberToSegment(3 , m0);
 }
 
-void play_alarm_song(){
+void play_alarm_song() {
   if (music_note > sizeof(music) - 1) {
     music_note = 0;
   }
@@ -99,31 +98,29 @@ void play_alarm_song(){
 }
 
 /* Segment byte maps for numbers 0 to 9 */
-const byte SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
+const byte SEGMENT_MAP[] = {0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0X80, 0X90};
 /* Byte maps to select digit 1 to 4 */
-const byte SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
+const byte SEGMENT_SELECT[] = {0xF1, 0xF2, 0xF4, 0xF8};
 
 void setup() {
   /* Set DIO pins to outputs */
   Serial.begin(9600);
-  pinMode(LATCH_DIO,OUTPUT);
-  pinMode(CLK_DIO,OUTPUT);
-  pinMode(DATA_DIO,OUTPUT);
-//  pinMode(KEY1, INPUT);
-//  pinMode(KEY3, INPUT);
+  pinMode(LATCH_DIO, OUTPUT);
+  pinMode(CLK_DIO, OUTPUT);
+  pinMode(DATA_DIO, OUTPUT);
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
   pinMode(LED4, OUTPUT);
   pinMode(BUZZ, OUTPUT);
   leds_off();
-  digitalWrite(BUZZ,HIGH); //turn of buzzer when HIGH
+  digitalWrite(BUZZ, HIGH); //turn of buzzer when HIGH
 
   pinMode(KEY1, INPUT_PULLUP);
   pinMode(KEY2, INPUT_PULLUP);
   pinMode(KEY3, INPUT_PULLUP);
   int tempo = 1000; // TODO: multiplicar por 60 para fazer relogio contar 24 horas ao inves de 24min
-  buzz_td = sizeof(music)*1000;
+  buzz_td = sizeof(music) * 1000;
   buzz_ts = 0;
   timer_set(tempo);
 }
@@ -131,7 +128,7 @@ void setup() {
 
 /* Main program */
 void loop() {
-  digitalWrite(BUZZ,HIGH);
+  digitalWrite(BUZZ, HIGH);
 
   //TODO: Fix debounce for all keys using an array
   int but1 = digitalRead(KEY1);
@@ -139,35 +136,51 @@ void loop() {
   int but3 = digitalRead(KEY3);
   int read_buttons[2] = {but1, but2}; //TODO: Fix debounce for all buttons
 
-  if((buzz_ts != 0) && (timeNow - buzz_ts >= buzz_td)) {
+
+  if ((buzz_ts != 0) && (timeNow - buzz_ts >= buzz_td)) {
     turn_on_buzzer = false;
     digitalWrite(BUZZ, HIGH);
     music_note = 0;
   }
 
-
-  if ((but3 == LOW) && (but3_LastState == HIGH)) {
-    // Falling case
-    but3_CurrState = LOW;
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (but3 != but3_CurrState) {
-      but3_CurrState = but3;
-      if (but3_CurrState == HIGH) {
-        goto_next_mode();
-      }
+  for (int i = 0; i < 3; i++) {
+    currentStates[i] = digitalRead(buttons[i]);
+    if ((currentStates[i] == LOW) && (butStates[i] == HIGH)) {
+      butStates[i] = LOW;
+      buttonTime[i] = millis();
     }
+
+    timeNow = millis();
+
+    if ((timeNow - lastDebounceTime) > debounceDelay){
+    //BUT 3
+    int but3 = digitalRead(KEY3);
+      if (but3 != currentStates[2]) {
+        currentStates[2] = but3;
+        if (but3 == HIGH) {
+          goto_next_mode();
+        }
+      }
+      //BUT1+3
+      int but1 = digitalRead(KEY1);
+      if (but3 && but1) {
+        leds_off();
+        modeIndex = 21;
+      }
+
+    }
+
   }
+
+  
   //TODO: Fix debounce for all keys using an array
 
-  timeNow=millis();
-  if(timeNow-timerStart >= timerDuration) {
-    if (turn_on_buzzer == true){
-        digitalWrite(BUZZ, HIGH);
-        play_alarm_song();
-        digitalWrite(BUZZ, HIGH);
+  timeNow = millis();
+  if (timeNow - timerStart >= timerDuration) {
+    if (turn_on_buzzer == true) {
+      digitalWrite(BUZZ, HIGH);
+      play_alarm_song();
+      digitalWrite(BUZZ, HIGH);
     }
     update_time();
     int tempo = 1000;
@@ -192,7 +205,7 @@ void loop() {
 
   modeIndex = modes[current_mode];
 
-  switch(modeIndex){
+  switch (modeIndex) {
     case CLOCK: //mostrar horario com alarme desligado
       digitalWrite(LED1, LOW);
       show_time(clk_h1, clk_h0, clk_m1, clk_m0);
@@ -206,57 +219,53 @@ void loop() {
     case ALARM: //mostrar horario do alarme
       digitalWrite(LED1, LOW);
       digitalWrite(LED2, LOW);
-//      show_time(alarm_time);
       show_time(alm_h1, alm_h0, alm_m1, alm_m0);
       Serial.println(modeIndex); //delete
       break;
     case SET_CLOCK_H:
       digitalWrite(LED1, LOW);
-      digitalWrite(LED3,LOW);
+      digitalWrite(LED3, LOW);
       show_stateN(3);
-//      set_time()
       Serial.println(modeIndex); //delete
       break;
     case SET_CLOCK_M:
       digitalWrite(LED1, LOW);
       digitalWrite(LED4, LOW);
       show_stateN(4);
-//      set_time();
       Serial.println(modeIndex); //delete
       break;
     case SET_ALARM_H:
       digitalWrite(LED2, LOW);
-      digitalWrite(LED3,LOW);
+      digitalWrite(LED3, LOW);
       show_stateN(5);
-//      set_time()
       Serial.println(modeIndex); //delete
       break;
     case SET_ALARM_M:
       digitalWrite(LED2, LOW);
       digitalWrite(LED4, LOW);
       show_stateN(6);
-//      set_time();
       Serial.println(modeIndex); //delete
       break;
   }
-  digitalWrite(BUZZ,HIGH);
+  digitalWrite(BUZZ, HIGH);
 }
 
 /* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
 void WriteNumberToSegment(byte Segment, byte Value) {
-  digitalWrite(LATCH_DIO,LOW);
+  digitalWrite(LATCH_DIO, LOW);
   shiftOut(DATA_DIO, CLK_DIO, MSBFIRST, SEGMENT_MAP[Value]);
   shiftOut(DATA_DIO, CLK_DIO, MSBFIRST, SEGMENT_SELECT[Segment] );
-  digitalWrite(LATCH_DIO,HIGH);
+  digitalWrite(LATCH_DIO, HIGH);
 }
 
-void leds_off(){
-  for(int i=10;i<14;i++){
-    digitalWrite(i,HIGH);
+void leds_off() {
+  for (int i = 10; i < 14; i++) {
+    digitalWrite(i, HIGH);
   }
 }
 
 void goto_next_mode() {
+  leds_off();
   current_mode += 1;
   if (current_mode > sizeof(modes) - 1) {
     current_mode = 0;
@@ -269,20 +278,4 @@ void show_stateN(int n) {
   WriteNumberToSegment(1 , 0);
   WriteNumberToSegment(2 , 0);
   WriteNumberToSegment(3 , n);
-}
-
-
-void mode (){
-//  if (modeIndex===CLOCK){
-//    digitalWrite(LED1, LOW);
-//  }
-//  else if(modeIndex==ALARM_ON){
-//    digitalWrite(LED2, LOW);
-////      show_time(alarm_time);
-//  }
-//  else if(modeIndex==ALARM){
-////    show_time(alarm_time);
-//  }
-//  else if(modeIndex==SET_CLOCK_H){
-//  }
 }
