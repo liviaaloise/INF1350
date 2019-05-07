@@ -42,7 +42,7 @@ local function newblip (vel)
       activity = bool
     end,
     
-    getActivity = function () return activity end,
+--    getActivity = function () return activity end,
     getInactiveTime = function () return inactiveTime end
     
   }
@@ -101,12 +101,16 @@ function love.update(dt)
 
   player.update(dt)
   for i = 1,#listabls do
-    if listabls[i].getInactiveTime() >= nowTime then
-      listabls[i].setActivity(true)
-    end
-    if listabls[i].getActivity() == true then
+    if listabls[i].getInactiveTime() <= nowTime then
+--      listabls[i].setActivity(true)
       listabls[i].update()
     end
+--    if listabls[i].getActivity() == true then
+--      listabls[i].update()
+--    end
+--    print(i, listabls[i].getActivity(), listabls[i].getInactiveTime(), nowTime)
+    print(i, listabls[i].getInactiveTime(), nowTime)
   end
+  print("\n")
 end
   
