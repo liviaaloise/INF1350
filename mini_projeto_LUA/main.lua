@@ -82,7 +82,6 @@ end
 
 
 
-
 --                                                                               Bullet
 local function newbullet (player)
   local sx = player.getX() + 35/2
@@ -97,19 +96,21 @@ local function newbullet (player)
   end
   
   local function up()
-    while true do
-      if fire_status then
-        sy = sy - 3.0
-      end
-      if sy < 0 then 
-        fire_status = false
-      end
-      wait(0.0001)
+    while sy > 0  do
+      sy = sy - 3.0 -- *Para variar o "passo" da bullet
+      wait(0.01) -- *Para variar o tempo de espera/velocidade da bullet
     end
   end
+  
+  local function b ()
+    local c = coroutine.create(up)
+    return function ()
+      return coroutine.resume(c)
+    end
+  end
+  
   return {
-    update = coroutine.wrap(up),
---    update = up,
+    update = b(),
     getSX = function () return sx end,
     getSY = function () return sy end,
     setSX = function (x) sx = x end,
@@ -127,14 +128,16 @@ local function newbullet (player)
 end
 
 
+
 --    Keypressed
 function love.keypressed(key)
   if key == 'a' then
     
+    bullet = newbullet(player)
     bullet.setFireStatus(true)
     bullet.setSX(player.getX()+35/2)
-    bullet.setSY(player.getY())
-    
+    table.insert(bullets_list, bullet)
+
     pos = player.try()
     for i in ipairs(listabls) do
       local hit = listabls[i].affected(pos)
@@ -150,8 +153,7 @@ end
 --      LOAD
 function love.load()
   player =  newplayer()
-  bullets = {}
-  bullet = newbullet(player)
+  bullets_list = {}
   listabls = {}
   for i = 1, 5 do
     listabls[i] = newblip(i/3, 0)
@@ -165,11 +167,13 @@ function love.draw()
   for i = 1,#listabls do
     listabls[i].draw()
   end
-  bullet.draw()
+  for i = 1,#bullets_list do
+    bullets_list[i].draw()
+  end
 end
 
 
---      LOAD
+--    LOVE UPDATE
 function love.update(dt)
   nowTime = love.timer.getTime()
   
@@ -183,10 +187,18 @@ function love.update(dt)
     end
   end
   
-  -- Update Bullet
-  if bullet.getWaitTime() <= nowTime then
-    bullet.update()
+  -- Update Bullets
+  for i = #bullets_list,1,-1 do
+    if bullets_list[i].getWaitTime() <= nowTime then
+      status = bullets_list[i].update()
+      print(status)
+      if status == false then
+--        table.insert(to_removes, i)
+        table.remove(bullets_list, i)
+      end
+    end
   end
-  print("Sx: ", bullet.getSX(), "| Sy: ", bullet.getSY(), bullet.getFireStatus())
+--  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
+--  end
 end
   
