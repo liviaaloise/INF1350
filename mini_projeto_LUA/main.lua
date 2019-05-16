@@ -48,7 +48,10 @@ end
 local function newplayer ()
   local x = 0
   local y = 200
+  local rect_height = 10
+  local rect_width = 35
   local width, height = love.graphics.getDimensions( )
+  local speed = 2.5
   
   return {
     try = function ()
@@ -56,26 +59,35 @@ local function newplayer ()
     end,
     
     update = function (dt)
-      x = x + 1.5
-      if x > width then
-        x = 0
+      -- todo
+      if love.keyboard.isDown('up') then player.incY(-speed) end
+      if love.keyboard.isDown('down') then player.incY(speed) end
+      if love.keyboard.isDown('left') then player.incX(-speed) end
+      if love.keyboard.isDown('right') then player.incX(speed) end
+      
+      if (x + rect_width) > width then
+        x = 0 -- player switch sides from right to left
+      elseif x < 0 then
+        x = width - rect_width -- player switch sides from left to right
+      end
+      if y > (height - rect_height) then
+        y = height - rect_height -- player can't go any lower
       end
     end,
     
-    getX = function ()
-      return x
-    end,
-    getY = function ()
-      return y
-    end,
+    getX = function () return x end,
+    getY = function () return y end,
+    setX = function (nx) x = nx end,
+    setY = function (ny) y = ny end,
+    incX = function (nx) x = x + nx end,
+    incY = function (ny) y = y + ny end,
     
-    setFireStatus = function (bool) fire_status = bool end,
-    getFireStatus = function () return fire_status end,
-    getWaitTime = function () return bullet_wait end,
+    getRectHeight = function () return rect_height end,
+    getRectWidth = function () return rect_width end,
     
     draw = function ()
 --      love.graphics.polygon("fill", x, y, x+10, y, x, y-10)
-      love.graphics.rectangle("fill", x, y, 35, 10)
+      love.graphics.rectangle("fill", x, y, rect_width, rect_height)
     end
   }
 end
@@ -98,7 +110,7 @@ local function newbullet (player)
   local function up()
     while sy > 0  do
       sy = sy - 3.0 -- *Para variar o "passo" da bullet
-      wait(0.01) -- *Para variar o tempo de espera/velocidade da bullet
+      wait(0.005) -- *Para variar o tempo de espera/velocidade da bullet
     end
   end
   
@@ -126,7 +138,6 @@ local function newbullet (player)
     end
   }
 end
-
 
 
 --    Keypressed
@@ -197,6 +208,7 @@ function love.update(dt)
         table.remove(bullets_list, i)
       end
     end
+    print(#bullets_list)
   end
 --  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
 --  end
