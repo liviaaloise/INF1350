@@ -6,3 +6,7 @@ void leds_off(void);
 void mode(void);
 void play_alarm_song(void);
 void goto_next_mode(void);
+void update_clk_hour(void);
+void update_clk_min(void);
+void update_alm_hour(void);
+void update_alm_min(void);
