@@ -48,7 +48,7 @@ local function newplayer ()
   local rect_height = 10
   local rect_width = 35
   local width, height = love.graphics.getDimensions( )
-  local speed = 2.5
+  local speed = 1.5
   local fire_rate = 0.5 -- time between shots
   local last_shot = 0
 
@@ -58,8 +58,14 @@ local function newplayer ()
     update = function (dt)
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
-      if love.keyboard.isDown('left') then player.incX(-speed) end
-      if love.keyboard.isDown('right') then player.incX(speed) end
+      if love.keyboard.isDown('left') then 
+        player.incX(-speed)
+        shipImg = love.graphics.newImage("l.png")
+      end
+      if love.keyboard.isDown('right') then
+        player.incX(speed)
+        shipImg = love.graphics.newImage("r.png")
+      end
 
       if (x + rect_width) > width then
         x = 0 -- player switch sides from right to left
@@ -89,7 +95,7 @@ local function newplayer ()
     incSpeed = function (vel) speed = speed + vel end, -- TODO
 
     draw = function ()
-      love.graphics.rectangle("fill", x, y, rect_width, rect_height)
+      love.graphics.draw(shipImg, x+32, y, 0, 1,1, 32, 0)
     end
   }
 end
@@ -269,6 +275,11 @@ end
 
 --      LOAD
 function love.load()
+  --  Load Images
+  bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
+  bg.width=bg.image:getWidth()  
+  shipImg = love.graphics.newImage("ship.png");
+
   item_respawn = love.timer.getTime() + love.math.random(6,10)
   player =  newplayer()
   bullets_list = {}
@@ -283,6 +294,10 @@ end
 
 --      DRAW
 function love.draw()
+  --  Draw Images
+  love.graphics.draw(bg.image, bg.x1, bg.y1)
+  love.graphics.draw(bg.image, bg.x2, bg.y2)
+  
   player.draw()
   for i = 1,#listabls do
     listabls[i].draw()
