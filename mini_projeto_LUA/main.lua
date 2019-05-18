@@ -13,7 +13,6 @@ local function newblip (vel, posx)
     while true do
       x = x + 15 -- x agora nao eh mais incrementado por vel
       if x > width then
-        -- volta para a esquerda da janela
         x = 0
       end
       wait(vel)
@@ -30,7 +29,7 @@ local function newblip (vel, posx)
       end
     end,
     draw = function ()
-      love.graphics.rectangle("line", x, y, 10, 10)
+      love.graphics.rectangle("fill", x, y, 10, 10)
     end,
 
     getInactiveTime = function () return inactiveTime end
@@ -141,8 +140,10 @@ local function newItem (sel, existence)
   local radius = 7.5
   local x = love.math.random(radius, width - radius)
   local y = love.math.random(radius, height + radius)
-  local clock = existence
+  local clock = 0.5
   local inactiveTime = 0
+  local mode = {"fill","line"}
+  local blink = 0
   local created = love.timer.getTime()
 
   local wait = function (seg)
@@ -151,9 +152,10 @@ local function newItem (sel, existence)
   end
 
   local function up()
-    while (created+clock) > love.timer.getTime() do
-      -- make it blink and change (created+clock) to (created+existence)
-      wait(clock) -- to make it blink clock should be lower
+    while (created+existence) > love.timer.getTime() do
+      -- make it blink
+      blink = bit.band(1,blink+1) -- bitwise: 1 & blink+1
+      wait(clock) -- blink frequency
     end
   end
 
@@ -165,19 +167,18 @@ local function newItem (sel, existence)
   end
 
   return {
-    -- update = coroutine.wrap(up),
     update = exists(),
     gotcha = function (posX, posY)
       if posX > x - radius and posX < x + radius then
         if posY > y - radius and posY < y + radius then
-        -- "pegou" o blip
+          -- TODO: Update function to change player status like health, speed, fire rate....
           return true
         end
         return false
       end
     end,
     draw = function ()
-      love.graphics.circle("line", x, y, radius, radius)
+      love.graphics.circle(mode[blink+1], x, y, radius, radius)
     end,
     -- getCreatedAt = function () return created end,
     getInactiveTime = function () return inactiveTime end
@@ -264,7 +265,6 @@ function love.update(dt)
         table.remove(bullets_list, i)
       end
     end
---    print(#bullets_list)
   end
 
   -- Update Items
