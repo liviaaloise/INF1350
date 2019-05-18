@@ -4,6 +4,7 @@ local function newblip (vel, posx)
   local width, height = love.graphics.getDimensions( )
   local inactiveTime = 0
   local square_size = 10
+  local fire_rate = math.random(0.05, 1) -- TODO: adjust time between shots
 
   local wait = function (seg)
     inactiveTime = love.timer.getTime() + seg
@@ -52,7 +53,7 @@ local function newplayer ()
   local last_shot = 0
 
   return {
-    try = function () return x end, -- TODO Delete and remove from key
+    try = function () return x end, -- TODO Delete and remove from keypressed
 
     update = function (dt)
       if love.keyboard.isDown('up') then player.incY(-speed) end
@@ -98,6 +99,7 @@ end
 local function newbullet (player)
   local sx = player.getXM()
   local sy = player.getY()
+  local speed = 0.0005
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
 
@@ -105,14 +107,12 @@ local function newbullet (player)
     bullet_wait = love.timer.getTime() + seg
     coroutine.yield()
   end
-
   local function up()
     while sy > 0  do
       sy = sy - 4.0 -- *Para variar o "passo" da bullet
-      wait(0.0005) -- *Para variar o tempo de espera/velocidade da bullet
+      wait(speed) -- *Para variar o tempo de espera/velocidade da bullet
     end
   end
-
   local function move ()
     local wrapping = coroutine.create(up)
     return function ()
@@ -152,6 +152,9 @@ local function newattack (blip)
   local function down()
     while status  do
       s = s + step
+      if s >= height then
+        status = false
+      end
       wait(speed)
     end
   end
@@ -202,7 +205,7 @@ local function newItem (sel, existence)
     coroutine.yield()
   end
 
-  local function up()
+  local function stay()
     while (created+existence) > love.timer.getTime() do
       -- make it blink
       blink = bit.band(1,blink+1) -- bitwise: 1 & blink+1
@@ -211,7 +214,7 @@ local function newItem (sel, existence)
   end
 
   local function exists ()
-    local wrapping = coroutine.create(up)
+    local wrapping = coroutine.create(stay)
     return function ()
       return coroutine.resume(wrapping)
     end
@@ -235,7 +238,6 @@ local function newItem (sel, existence)
         love.graphics.arc(blink_mode[blink+1], x, y, radius, 0, math.pi*2)
       end
     end,
-    -- getCreatedAt = function () return created end,
     getInactiveTime = function () return inactiveTime end
   }
 end
@@ -328,7 +330,7 @@ function love.update(dt)
 
   -- Update Items
   for i = #items_list,1,-1 do
-     print("Player Speed:", player.getSpeed()) -- TODO Test print
+    print("Player Speed:", player.getSpeed()) -- TODO Test print
     -- Check if player passed through item
     if items_list[i].gotcha(player.getXM(), player.getYM()) then
       print("\t\t\t\tOOOOOOOOOOOOOOOOOKKKKKKKKKKKk")
@@ -340,6 +342,7 @@ function love.update(dt)
       end
     end
     print("Number of Items:", #items_list)
+
   end
 --  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
 --  end
