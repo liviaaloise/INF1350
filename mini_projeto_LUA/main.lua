@@ -135,14 +135,13 @@ end
 
 
 --                                                                     -- Items
-local function newItem (sel)
+local function newItem (sel, existence)
   -- use SEL to make different types of items TODO
   local width, height = love.graphics.getDimensions()
-  -- get random space TODO
-  local x = width/4
-  local y = height/3
-  local square_size = 10
-  local clock = 2
+  local radius = 7.5
+  local x = love.math.random(radius, width - radius)
+  local y = love.math.random(radius, height + radius)
+  local clock = existence
   local inactiveTime = 0
   local created = love.timer.getTime()
 
@@ -153,7 +152,7 @@ local function newItem (sel)
 
   local function up()
     while (created+clock) > love.timer.getTime() do
-      -- make it blink
+      -- make it blink and change (created+clock) to (created+existence)
       wait(clock) -- to make it blink clock should be lower
     end
   end
@@ -169,8 +168,8 @@ local function newItem (sel)
     -- update = coroutine.wrap(up),
     update = exists(),
     gotcha = function (posX, posY)
-      if posX > x and posX < x + square_size then
-        if posY > y and posY < y + square_size then
+      if posX > x - radius and posX < x + radius then
+        if posY > y - radius and posY < y + radius then
         -- "pegou" o blip
           return true
         end
@@ -178,9 +177,9 @@ local function newItem (sel)
       end
     end,
     draw = function ()
-      love.graphics.rectangle("line", x, y, square_size, square_size)
+      love.graphics.circle("line", x, y, radius, radius)
     end,
-    getCreatedAt = function () return created end,
+    -- getCreatedAt = function () return created end,
     getInactiveTime = function () return inactiveTime end
   }
 end
@@ -213,7 +212,7 @@ end
 
 --      LOAD
 function love.load()
-  start = love.timer.getTime()
+  item_respawn = love.timer.getTime() + love.math.random(6,10)
   player =  newplayer()
   bullets_list = {}
   items_list = {}
@@ -242,11 +241,9 @@ end
 --    LOVE UPDATE
 function love.update(dt)
   local nowTime = love.timer.getTime()
-
-  -- TODO GENERATE ITEMS HERE: RANDOMIZE GENERATION!
-  if (start+15) < nowTime then
-    start = start + 20
-    table.insert(items_list, newItem(0))
+  if item_respawn < nowTime then
+    item_respawn = item_respawn + love.math.random(4,5) -- time to generate next item
+    table.insert(items_list, newItem(0, love.math.random(5,10)))
   end
 
   -- Update Player
