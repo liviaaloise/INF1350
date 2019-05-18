@@ -40,7 +40,6 @@ local function newblip (vel, posx)
 end
 
 
-
 --                                                                    -- Player
 local function newplayer ()
   local x = 0
@@ -142,11 +141,11 @@ end
 
 
 --                                                                    -- Attack
-local function newattack (blip)
-  local x = blip.getXM()
-  local y = blip.getYL()
+local function newattack (blipXM, blipYL)
+  local x = blipXM
+  local y = blipYL
   local step = 4.0
-  local speed = 0.02
+  local speed = 0.025
   local status = true -- TODO: make use of 'status' becomes false if player its hit or if y >= height
   local attack_wait = 0
   local width, height = love.graphics.getDimensions( )
@@ -157,8 +156,8 @@ local function newattack (blip)
   end
   local function down()
     while status  do
-      s = s + step
-      if s >= height then
+      y = y + step
+      if y >= height then
         status = false
       end
       wait(speed)
@@ -281,6 +280,7 @@ function love.load()
   shipImg = love.graphics.newImage("ship.png");
 
   item_respawn = love.timer.getTime() + love.math.random(6,10)
+  attack_respawn = love.timer.getTime() + 2.0 -- TODO testing: enemy shooting
   player =  newplayer()
   bullets_list = {}
   enemy_fire = {}
@@ -308,6 +308,9 @@ function love.draw()
   for i = 1,#items_list do
     items_list[i].draw()
   end
+  for i = 1,#enemy_fire do
+    enemy_fire[i].draw()
+  end
 end
 
 
@@ -319,6 +322,7 @@ function love.update(dt)
   player.update(dt)
 
   -- Update Items
+  -- TODO: Try another solution instead of using 'item_respawn' as a global variable, to reduce lag
   if item_respawn < nowTime then
     -- item_respawn = item_respawn + love.math.random(3,8) -- time to generate next item
     item_respawn = item_respawn + love.math.random(10,20) -- time to generate next item
@@ -329,6 +333,11 @@ function love.update(dt)
   for i = 1,#listabls do
     if listabls[i].getInactiveTime() <= nowTime then
       listabls[i].update()
+    end
+    if attack_respawn <= nowTime then
+      -- TODO: Try another solution instead of using 'attack_respawn' as a global variable, to reduce lag
+      attack_respawn = attack_respawn + 2.0 -- time between shots
+      table.insert(enemy_fire, newattack(listabls[i].getXM(), listabls[i].getYL()))
     end
   end
 
@@ -341,14 +350,12 @@ function love.update(dt)
       end
     end
   end
-  -- print(#bullets_list) TODO remove print
 
   -- Update Items
   for i = #items_list,1,-1 do
     print("Player Speed:", player.getSpeed()) -- TODO Test print
     -- Check if player passed through item
     if items_list[i].gotcha(player.getXM(), player.getYM()) then
-      print("\t\t\t\tOOOOOOOOOOOOOOOOOKKKKKKKKKKKk")
       table.remove(items_list, i)
     elseif items_list[i].getInactiveTime() <= nowTime then
       local status = items_list[i].update()
@@ -356,8 +363,17 @@ function love.update(dt)
         table.remove(items_list, i)
       end
     end
-    print("Number of Items:", #items_list)
+  end
 
+  print("Number of enemies bullets:", #enemy_fire)
+  for i = #enemy_fire,1,-1 do
+    if enemy_fire[i].getWaitTime() <= nowTime then
+      print("\n\t\t\tGONNA UPDATE ENEMY FIRE\n")
+      local status = enemy_fire[i].update()
+      if status == false then
+        table.remove(enemy_fire, i)
+      end
+    end
   end
 --  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
 --  end
