@@ -91,7 +91,6 @@ end
 local function newbullet (player)
   local sx = player.getX() + 35/2
   local sy = player.getY()
-  local fire_status = false
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
 
@@ -120,14 +119,10 @@ local function newbullet (player)
     getSY = function () return sy end,
     setSX = function (x) sx = x end,
     setSY = function (y) sy = y end,
-    setFireStatus = function (bool) fire_status = bool end,
-    getFireStatus = function () return fire_status end,
     getWaitTime = function () return bullet_wait end,
 
     draw = function ()
-      if fire_status == true then
-        love.graphics.polygon("fill", sx, sy, sx+3.5, sy, sx, sy-10.5)
-      end
+      love.graphics.polygon("fill", sx, sy, sx+3.5, sy, sx, sy-10.5)
     end
   }
 end
@@ -191,10 +186,9 @@ function love.keypressed(key)
   if key == 'a' then
     local last_shot = player.getLastShot()
     if (last_shot == 0) or (last_shot <= love.timer.getTime()) then
-      print("LAST SHOT", last_shot)
+      -- print("LAST SHOT", last_shot)
       player.shoot_bullet()
       local bullet = newbullet(player)
-      bullet.setFireStatus(true)
       bullet.setSX(player.getX()+35/2)
       table.insert(bullets_list, bullet)
 
@@ -266,6 +260,7 @@ function love.update(dt)
       end
     end
   end
+  print(#bullets_list)
 
   -- Update Items
   for i = #items_list,1,-1 do
