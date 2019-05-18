@@ -3,6 +3,7 @@ local function newblip (vel, posx)
   local x, y = posx, 0
   local width, height = love.graphics.getDimensions( )
   local inactiveTime = 0
+  local square_size = 10
 
   local wait = function (seg)
     inactiveTime = love.timer.getTime() + seg
@@ -29,9 +30,10 @@ local function newblip (vel, posx)
       end
     end,
     draw = function ()
-      love.graphics.rectangle("fill", x, y, 10, 10)
+      love.graphics.rectangle("fill", x, y, square_size, square_size)
     end,
-
+    getXM = function () return x + square_size/2 end, -- Mid X
+    getYL = function () return y + square_size end, -- Lower Y
     getInactiveTime = function () return inactiveTime end
   }
 end
@@ -50,9 +52,7 @@ local function newplayer ()
   local last_shot = 0
 
   return {
-    try = function ()
-      return x
-    end,
+    try = function () return x end, -- TODO Delete and remove from key
 
     update = function (dt)
       if love.keyboard.isDown('up') then player.incY(-speed) end
@@ -71,14 +71,21 @@ local function newplayer ()
     end,
 
     getX = function () return x end,
+    getXM = function () return x + rect_width/2 end,
     getY = function () return y end,
+    getYM = function () return y - rect_height/2 end,
     incX = function (nx) x = x + nx end,
     incY = function (ny) y = y + ny end,
     getLastShot = function () return last_shot end,
     shoot_bullet = function () last_shot = love.timer.getTime() + fire_rate end,
-    -- incFireRate = function (i) fire_rate = fire_rate + i end, -- TODO
     getRectHeight = function () return rect_height end,
     getRectWidth = function () return rect_width end,
+
+    -- TODO: Test functions
+    getSpeed = function () return speed end,
+    getFireRate = function () return fire_rate end,
+    incFireRate = function (i) fire_rate = fire_rate + i end, -- TODO
+    incSpeed = function (vel) speed = speed + vel end, -- TODO
 
     draw = function ()
       love.graphics.rectangle("fill", x, y, rect_width, rect_height)
@@ -89,7 +96,7 @@ end
 
 --                                                                    -- Bullet
 local function newbullet (player)
-  local sx = player.getX() + 35/2
+  local sx = player.getXM()
   local sy = player.getY()
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
@@ -128,17 +135,66 @@ local function newbullet (player)
 end
 
 
+--                                                                    -- Attack
+local function newattack (blip)
+  local x = blip.getXM()
+  local y = blip.getYL()
+  local step = 4.0
+  local speed = 0.02
+  local status = true -- TODO: make use of 'status' becomes false if player its hit or if y >= height
+  local attack_wait = 0
+  local width, height = love.graphics.getDimensions( )
+
+  local wait = function (seg)
+    attack_wait = love.timer.getTime() + seg
+    coroutine.yield()
+  end
+  local function down()
+    while status  do
+      s = s + step
+      wait(speed)
+    end
+  end
+  local function move ()
+    local wrapping = coroutine.create(down)
+    return function ()
+      return coroutine.resume(wrapping)
+    end
+  end
+
+  return {
+    update = move(),
+    getX = function () return x end,
+    getY = function () return y end,
+    setX = function (xi) x = xi end,
+    setY = function (yi) y = yi end,
+    getWaitTime = function () return attack_wait end,
+
+    -- TODO: Implement collision
+    -- collision = function () end,
+
+    draw = function ()
+      if status then
+        love.graphics.polygon("line", x, y, x+3.5, y, x, y-10.5)
+      end
+    end
+  }
+end
+
+
 --                                                                     -- Items
 local function newItem (sel, existence)
   -- use SEL to make different types of items TODO
   local width, height = love.graphics.getDimensions()
   local radius = 7.5
-  local x = love.math.random(radius, width - radius)
-  local y = love.math.random(radius, height + radius)
-  local clock = 0.5
+  local x = love.math.random(radius, width - 2*radius)
+  local y = love.math.random(radius, height + 2*radius)
+  local clock = 0.25
   local inactiveTime = 0
-  local mode = {"fill","line"}
+  local mode = {"inc_fire_rate", "dec_fire_rate", "inc_speed", "dec_speed"}
+  local blink_mode = {"fill","line"}
   local blink = 0
+  local active = true
   local created = love.timer.getTime()
 
   local wait = function (seg)
@@ -166,14 +222,18 @@ local function newItem (sel, existence)
     gotcha = function (posX, posY)
       if posX > x - radius and posX < x + radius then
         if posY > y - radius and posY < y + radius then
+          player.incSpeed(0.2) -- TODO TEST
           -- TODO: Update function to change player status like health, speed, fire rate....
+          active = false
           return true
         end
         return false
       end
     end,
     draw = function ()
-      love.graphics.circle(mode[blink+1], x, y, radius, radius)
+      if active then
+        love.graphics.arc(blink_mode[blink+1], x, y, radius, 0, math.pi*2)
+      end
     end,
     -- getCreatedAt = function () return created end,
     getInactiveTime = function () return inactiveTime end
@@ -186,10 +246,10 @@ function love.keypressed(key)
   if key == 'a' then
     local last_shot = player.getLastShot()
     if (last_shot == 0) or (last_shot <= love.timer.getTime()) then
-      -- print("LAST SHOT", last_shot)
+      -- print("LAST SHOT", last_shot) todo remove print
       player.shoot_bullet()
       local bullet = newbullet(player)
-      bullet.setSX(player.getX()+35/2)
+      bullet.setSX(player.getXM())
       table.insert(bullets_list, bullet)
 
       local pos = player.try()
@@ -210,6 +270,7 @@ function love.load()
   item_respawn = love.timer.getTime() + love.math.random(6,10)
   player =  newplayer()
   bullets_list = {}
+  enemy_fire = {}
   items_list = {}
   listabls = {}
   for i = 1, 5 do
@@ -236,13 +297,16 @@ end
 --    LOVE UPDATE
 function love.update(dt)
   local nowTime = love.timer.getTime()
-  if item_respawn < nowTime then
-    item_respawn = item_respawn + love.math.random(4,5) -- time to generate next item
-    table.insert(items_list, newItem(0, love.math.random(5,10)))
-  end
 
   -- Update Player
   player.update(dt)
+
+  -- Update Items
+  if item_respawn < nowTime then
+    -- item_respawn = item_respawn + love.math.random(3,8) -- time to generate next item
+    item_respawn = item_respawn + love.math.random(10,20) -- time to generate next item
+    table.insert(items_list, newItem(0, love.math.random(5,10))) -- time item will exist
+  end
 
   -- Update blips
   for i = 1,#listabls do
@@ -260,16 +324,22 @@ function love.update(dt)
       end
     end
   end
-  print(#bullets_list)
+  -- print(#bullets_list) TODO remove print
 
   -- Update Items
   for i = #items_list,1,-1 do
-    if items_list[i].getInactiveTime() <= nowTime then
+     print("Player Speed:", player.getSpeed()) -- TODO Test print
+    -- Check if player passed through item
+    if items_list[i].gotcha(player.getXM(), player.getYM()) then
+      print("\t\t\t\tOOOOOOOOOOOOOOOOOKKKKKKKKKKKk")
+      table.remove(items_list, i)
+    elseif items_list[i].getInactiveTime() <= nowTime then
       local status = items_list[i].update()
       if status == false then
         table.remove(items_list, i)
       end
     end
+    print("Number of Items:", #items_list)
   end
 --  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
 --  end
