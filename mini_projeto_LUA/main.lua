@@ -1,15 +1,14 @@
---                                                                               Blip
+--                                                                      -- Blip
 local function newblip (vel, posx)
   local x, y = posx, 0
   local width, height = love.graphics.getDimensions( )
   local inactiveTime = 0
-  
+
   local wait = function (seg)
-    activity = false
     inactiveTime = love.timer.getTime() + seg
     coroutine.yield()
   end
-  
+
   local function up()
     while true do
       x = x + 15 -- x agora nao eh mais incrementado por vel
@@ -33,18 +32,14 @@ local function newblip (vel, posx)
     draw = function ()
       love.graphics.rectangle("line", x, y, 10, 10)
     end,
-    
-    setActivity = function (bool)
-      activity = bool
-    end,
-    
+
     getInactiveTime = function () return inactiveTime end
   }
 end
 
 
 
---                                                                               Player
+--                                                                    -- Player
 local function newplayer ()
   local x = 0
   local y = 200
@@ -52,19 +47,20 @@ local function newplayer ()
   local rect_width = 35
   local width, height = love.graphics.getDimensions( )
   local speed = 2.5
-  
+  local fire_rate = 0.5 -- time between shots
+  local last_shot = 0
+
   return {
     try = function ()
       return x
     end,
-    
+
     update = function (dt)
-      -- todo
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
       if love.keyboard.isDown('left') then player.incX(-speed) end
       if love.keyboard.isDown('right') then player.incX(speed) end
-      
+
       if (x + rect_width) > width then
         x = 0 -- player switch sides from right to left
       elseif x < 0 then
@@ -74,55 +70,53 @@ local function newplayer ()
         y = height - rect_height -- player can't go any lower
       end
     end,
-    
+
     getX = function () return x end,
     getY = function () return y end,
-    setX = function (nx) x = nx end,
-    setY = function (ny) y = ny end,
     incX = function (nx) x = x + nx end,
     incY = function (ny) y = y + ny end,
-    
+    getLastShot = function () return last_shot end,
+    shoot_bullet = function () last_shot = love.timer.getTime() + fire_rate end,
+    -- incFireRate = function (i) fire_rate = fire_rate + i end, -- TODO
     getRectHeight = function () return rect_height end,
     getRectWidth = function () return rect_width end,
-    
+
     draw = function ()
---      love.graphics.polygon("fill", x, y, x+10, y, x, y-10)
       love.graphics.rectangle("fill", x, y, rect_width, rect_height)
     end
   }
 end
 
 
-
---                                                                               Bullet
+--                                                                    -- Bullet
 local function newbullet (player)
   local sx = player.getX() + 35/2
   local sy = player.getY()
   local fire_status = false
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
-  
+
   local wait = function (seg)
     bullet_wait = love.timer.getTime() + seg
     coroutine.yield()
   end
-  
+
   local function up()
     while sy > 0  do
-      sy = sy - 3.0 -- *Para variar o "passo" da bullet
-      wait(0.005) -- *Para variar o tempo de espera/velocidade da bullet
+      sy = sy - 4.0 -- *Para variar o "passo" da bullet
+      wait(0.0005) -- *Para variar o tempo de espera/velocidade da bullet
     end
   end
-  
-  local function b ()
-    local c = coroutine.create(up)
+
+  local function move ()
+    local wrapping = coroutine.create(up)
     return function ()
-      return coroutine.resume(c)
+      return coroutine.resume(wrapping)
     end
   end
-  
+
   return {
-    update = b(),
+    update = move(),
     getSX = function () return sx end,
     getSY = function () return sy end,
     setSX = function (x) sx = x end,
@@ -130,7 +124,7 @@ local function newbullet (player)
     setFireStatus = function (bool) fire_status = bool end,
     getFireStatus = function () return fire_status end,
     getWaitTime = function () return bullet_wait end,
-    
+
     draw = function ()
       if fire_status == true then
         love.graphics.polygon("fill", sx, sy, sx+3.5, sy, sx, sy-10.5)
@@ -140,21 +134,77 @@ local function newbullet (player)
 end
 
 
+--                                                                     -- Items
+local function newItem (sel)
+  -- use SEL to make different types of items TODO
+  local width, height = love.graphics.getDimensions()
+  -- get random space TODO
+  local x = width/4
+  local y = height/3
+  local square_size = 10
+  local clock = 2
+  local inactiveTime = 0
+  local created = love.timer.getTime()
+
+  local wait = function (seg)
+    inactiveTime = love.timer.getTime() + seg
+    coroutine.yield()
+  end
+
+  local function up()
+    while (created+clock) > love.timer.getTime() do
+      -- make it blink
+      wait(clock) -- to make it blink clock should be lower
+    end
+  end
+
+  local function exists ()
+    local wrapping = coroutine.create(up)
+    return function ()
+      return coroutine.resume(wrapping)
+    end
+  end
+
+  return {
+    -- update = coroutine.wrap(up),
+    update = exists(),
+    gotcha = function (posX, posY)
+      if posX > x and posX < x + square_size then
+        if posY > y and posY < y + square_size then
+        -- "pegou" o blip
+          return true
+        end
+        return false
+      end
+    end,
+    draw = function ()
+      love.graphics.rectangle("line", x, y, square_size, square_size)
+    end,
+    getCreatedAt = function () return created end,
+    getInactiveTime = function () return inactiveTime end
+  }
+end
+
+
 --    Keypressed
 function love.keypressed(key)
   if key == 'a' then
-    
-    bullet = newbullet(player)
-    bullet.setFireStatus(true)
-    bullet.setSX(player.getX()+35/2)
-    table.insert(bullets_list, bullet)
+    local last_shot = player.getLastShot()
+    if (last_shot == 0) or (last_shot <= love.timer.getTime()) then
+      print("LAST SHOT", last_shot)
+      player.shoot_bullet()
+      local bullet = newbullet(player)
+      bullet.setFireStatus(true)
+      bullet.setSX(player.getX()+35/2)
+      table.insert(bullets_list, bullet)
 
-    pos = player.try()
-    for i in ipairs(listabls) do
-      local hit = listabls[i].affected(pos)
-      if hit then
-        table.remove(listabls, i) -- esse blip "morre" 
-        return -- assumo que apenas um blip morre
+      local pos = player.try()
+      for i in ipairs(listabls) do
+        local hit = listabls[i].affected(pos)
+        if hit then
+          table.remove(listabls, i) -- esse blip "morre"
+          return -- assumo que apenas um blip morre
+        end
       end
     end
   end
@@ -163,8 +213,10 @@ end
 
 --      LOAD
 function love.load()
+  start = love.timer.getTime()
   player =  newplayer()
   bullets_list = {}
+  items_list = {}
   listabls = {}
   for i = 1, 5 do
     listabls[i] = newblip(i/3, 0)
@@ -181,36 +233,52 @@ function love.draw()
   for i = 1,#bullets_list do
     bullets_list[i].draw()
   end
+  for i = 1,#items_list do
+    items_list[i].draw()
+  end
 end
 
 
 --    LOVE UPDATE
 function love.update(dt)
-  nowTime = love.timer.getTime()
-  
+  local nowTime = love.timer.getTime()
+
+  -- TODO GENERATE ITEMS HERE: RANDOMIZE GENERATION!
+  if (start+15) < nowTime then
+    start = start + 20
+    table.insert(items_list, newItem(0))
+  end
+
   -- Update Player
-  player.update(dt) 
-  
+  player.update(dt)
+
   -- Update blips
   for i = 1,#listabls do
     if listabls[i].getInactiveTime() <= nowTime then
       listabls[i].update()
     end
   end
-  
+
   -- Update Bullets
   for i = #bullets_list,1,-1 do
     if bullets_list[i].getWaitTime() <= nowTime then
-      status = bullets_list[i].update()
-      print(status)
+      local status = bullets_list[i].update()
       if status == false then
---        table.insert(to_removes, i)
         table.remove(bullets_list, i)
       end
     end
-    print(#bullets_list)
+--    print(#bullets_list)
+  end
+
+  -- Update Items
+  for i = #items_list,1,-1 do
+    if items_list[i].getInactiveTime() <= nowTime then
+      local status = items_list[i].update()
+      if status == false then
+        table.remove(items_list, i)
+      end
+    end
   end
 --  print("Sx: ", bullets_list[i].getSX(), "| Sy: ", bullets_list[i].getSY(), bullets_list[i].getFireStatus())
 --  end
 end
-  
