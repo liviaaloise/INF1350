@@ -3,8 +3,9 @@ local function newblip (vel, posx)
   local x, y = posx, 0
   local width, height = love.graphics.getDimensions( )
   local inactiveTime = 0
-  local square_size = 10
+  local square_size = 15
   local fire_rate = math.random(0.05, 1) -- TODO: adjust time between shots
+  local health = 10
 
   local wait = function (seg)
     inactiveTime = love.timer.getTime() + seg
@@ -22,20 +23,24 @@ local function newblip (vel, posx)
   end
   return {
     update = coroutine.wrap(up),
-    affected = function (pos)
-      if pos > x and pos < x+10 then
-      -- "pegou" o blip
-        return true
+    affected = function (posX, posY)
+      if posX >= x and posX <= x+square_size then
+        if posY >= y and posY <=y + square_size then
+--          "pegou" o blip 
+          return true
+        end
       else
         return false
       end
     end,
     draw = function ()
-      love.graphics.rectangle("fill", x, y, square_size, square_size)
+        love.graphics.rectangle("fill", x, y, square_size, square_size)
     end,
     getXM = function () return x + square_size/2 end, -- Mid X
     getYL = function () return y + square_size end, -- Lower Y
-    getInactiveTime = function () return inactiveTime end
+    getInactiveTime = function () return inactiveTime end,
+    kill = function () health = 0 end,
+    getHp = function () return health end
   }
 end
 
@@ -57,7 +62,6 @@ local function newplayer ()
     try = function () return x end, -- TODO Delete and remove from keypressed
 
     update = function (dt)
-      shipImg = love.graphics.newImage("ship.png");
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
       if love.keyboard.isDown('left') then
@@ -101,8 +105,6 @@ local function newplayer ()
     end
   }
 end
-
-
 --                                                                    -- Bullet
 local function newbullet (player)
   local sx = player.getXM()
@@ -110,6 +112,8 @@ local function newbullet (player)
   local speed = 0.0005
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
+  local bulletImg = love.graphics.newImage("shot.png")
+  local radius = 4
 
   local wait = function (seg)
     bullet_wait = love.timer.getTime() + seg
@@ -121,6 +125,7 @@ local function newbullet (player)
       wait(speed) -- *Para variar o tempo de espera/velocidade da bullet
     end
   end
+
   local function move ()
     local wrapping = coroutine.create(up)
     return function ()
@@ -136,8 +141,17 @@ local function newbullet (player)
     setSY = function (y) sy = y end,
     getWaitTime = function () return bullet_wait end,
 
+    collision = function ()
+      for j = 1,#listabls do
+        if(listabls[j].affected(sx, sy)) then
+          table.remove(listabls,j)
+          break
+       end
+     end
+    end,
+
     draw = function ()
-      love.graphics.polygon("fill", sx, sy, sx+3.5, sy, sx, sy-10.5)
+      love.graphics.draw(bulletImg, sx, sy, 0, 1,1, radius, radius)
     end
   }
 end
@@ -262,14 +276,6 @@ function love.keypressed(key)
       bullet.setSX(player.getXM())
       table.insert(bullets_list, bullet)
 
-      local pos = player.try()
-      for i in ipairs(listabls) do
-        local hit = listabls[i].affected(pos)
-        if hit then
-          table.remove(listabls, i) -- esse blip "morre"
-          return -- assumo que apenas um blip morre
-        end
-      end
     end
   end
 end
@@ -277,6 +283,7 @@ end
 
 --      LOAD
 function love.load()
+  love.window.setTitle("Lua Game")
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
   bg.width=bg.image:getWidth()
@@ -292,7 +299,7 @@ function love.load()
   listabls = {}
   for i = 1, 5 do
     listabls[i] = newblip(i/3, 0)
-  end
+  end 
 end
 
 
@@ -304,7 +311,7 @@ function love.draw()
 
   player.draw()
   for i = 1,#listabls do
-    listabls[i].draw()
+      listabls[i].draw()
   end
   for i = 1,#bullets_list do
     bullets_list[i].draw()
@@ -351,13 +358,15 @@ function love.update(dt)
       local status = bullets_list[i].update()
       if status == false then
         table.remove(bullets_list, i)
+      else 
+        bullets_list[i].collision()
       end
     end
   end
 
   -- Update Items
   for i = #items_list,1,-1 do
-    print("Player Speed:", player.getSpeed()) -- TODO Test print
+--    print("Player Speed:", player.getSpeed()) -- TODO Test print
     -- Check if player passed through item
     if items_list[i].gotcha(player.getXM(), player.getYM()) then
       table.remove(items_list, i)
@@ -369,10 +378,10 @@ function love.update(dt)
     end
   end
 
-  print("Number of enemies bullets:", #enemy_fire)
+--  print("Number of enemies bullets:", #enemy_fire)
   for i = #enemy_fire,1,-1 do
     if enemy_fire[i].getWaitTime() <= nowTime then
-      print("\n\t\t\tGONNA UPDATE ENEMY FIRE\n")
+--      print("\n\t\t\tGONNA UPDATE ENEMY FIRE\n")
       local status = enemy_fire[i].update()
       if status == false then
         table.remove(enemy_fire, i)
