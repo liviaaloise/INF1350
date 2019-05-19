@@ -62,6 +62,9 @@ local function newPlayer ()
   return {
     update = function (dt)
       -- Make ship look straight if it's not going to left or right
+      if health == 0 then
+        gamemode = "over"
+      end
       shipImg = ship_img_lst[1]
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
@@ -190,9 +193,7 @@ local function newAttack (blipXM, blipYL)
     if x >= px and x <= px2 then
       if y >= py and y <=py2 then
 --          "pegou" no player 
-        print("Hit player")
         player.setHp(playerDamadge)
-        print("Player health", player.getHp())
         return true
       end
     end
@@ -413,10 +414,17 @@ end
 function love.load()
   love.window.setTitle("Lua Game")
   Graphics = {}
+  font =  {
+    normal = love.graphics.setNewFont("Starjedi.ttf", 14),
+    large =  love.graphics.setNewFont("Starjedi.ttf", 30)
+    }
+  gamemode = "play"
 
   --  Load Images
-  bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
+  bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0, height=0}
   bg.width=bg.image:getWidth()
+  bg.height = bg.image:getHeight()
+
 
   item_generator = newItemGenerator()
   player =  newPlayer()
@@ -432,85 +440,126 @@ end
 --      DRAW
 function love.draw()
   --  Draw Images
-  love.graphics.draw(bg.image, bg.x1, bg.y1)
-  love.graphics.draw(bg.image, bg.x2, bg.y2)
+  
+  if gamemode == "play" then 
+      love.graphics.draw(bg.image, bg.x1, bg.y1)
+      love.graphics.draw(bg.image, bg.x2, bg.y2)
+--      local txt = tostring(player.getHp())
+--      print(txt)
+      love.graphics.setFont(font.normal)
+      love.graphics.print("HEALTH: "..player.getHp(), 20, 560)
 
-  player.draw()
-  for i = 1,#listabls do
-    listabls[i].draw()
-  end
-  for i = 1,#bullets_list do
-    bullets_list[i].draw()
-  end
-  local attack_lst = enemy_fire.getEnemyFireList()
-  for i=1,#attack_lst do
-    attack_lst[i].draw()
-  end
-  local items_lst = item_generator.getItemsList()
-  for i=1,#items_lst do
-    items_lst[i].draw()
+      player.draw()
+      for i = 1,#listabls do
+        listabls[i].draw()
+      end
+      for i = 1,#bullets_list do
+        bullets_list[i].draw()
+      end
+      local attack_lst = enemy_fire.getEnemyFireList()
+      for i=1,#attack_lst do
+        attack_lst[i].draw()
+      end
+      local items_lst = item_generator.getItemsList()
+      for i=1,#items_lst do
+        items_lst[i].draw()
+      end
+    elseif gamemode == "over" then
+      love.graphics.setFont(font.large)
+		  love.graphics.print("game over", 300, 150)
+      -- love.graphics.print("Everyone on earth is dead.", 200, 190)
   end
 end
 
 
 --    LOVE UPDATE
 function love.update(dt)
-  local nowTime = love.timer.getTime()
 
-  -- Update Player
-  player.update(dt)
 
-  -- Update Items
-  if item_generator.getWaitTime() <= nowTime then
-    -- time between items creation
-    item_generator.update()
-  end
-  local items_lst = item_generator.getItemsList()
-  for i = #items_lst,1,-1 do
+  if gamemode == "play" then 
 
-    print("Player Speed:", player.getSpeed()) -- TODO Test print
-    print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
+  
+    local nowTime = love.timer.getTime()
 
-    if items_lst[i].getInactiveTime() <= nowTime then
-      local status = items_lst[i].update()
-      if status == false then
-        item_generator.removeItem(i)
+    -- Update Player
+    player.update(dt)
+
+    -- Update Items
+    if item_generator.getWaitTime() <= nowTime then
+      -- time between items creation
+      item_generator.update()
+    end
+    local items_lst = item_generator.getItemsList()
+    for i = #items_lst,1,-1 do
+
+      print("Player Speed:", player.getSpeed()) -- TODO Test print
+      print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
+
+      if items_lst[i].getInactiveTime() <= nowTime then
+        local status = items_lst[i].update()
+        if status == false then
+          item_generator.removeItem(i)
+        end
+      end
+    end
+    -- print("items size list:",#items_lst)
+
+    -- Update blips
+    for i = 1,#listabls do
+      if listabls[i].getInactiveTime() <= nowTime then
+        listabls[i].update()
+      end
+    end
+
+    -- Update Bullets
+    for i = #bullets_list,1,-1 do
+      if bullets_list[i].getWaitTime() <= nowTime then
+        local status = bullets_list[i].update()
+        if status == false then
+          table.remove(bullets_list, i)
+        end
+      end
+    end
+
+    -- Update Enemy's attack, using two coroutines! One for shot speed and other as timer
+    if enemy_fire.getWaitTime() <= nowTime then
+      -- Wait time between blips shots
+      enemy_fire.update()
+    end
+    local attack_lst = enemy_fire.getEnemyFireList()
+    -- Blips bullet speed
+    for i=#attack_lst,1,-1 do
+  --    attack_lst[i].collision()
+      if attack_lst[i].getWaitTime() <= nowTime then
+        local status = attack_lst[i].update()
+        if status == false then
+          enemy_fire.removeEnemyFireList(i)
+        end
       end
     end
   end
-  -- print("items size list:",#items_lst)
+end
 
-  -- Update blips
-  for i = 1,#listabls do
-    if listabls[i].getInactiveTime() <= nowTime then
-      listabls[i].update()
-    end
-  end
 
-  -- Update Bullets
-  for i = #bullets_list,1,-1 do
-    if bullets_list[i].getWaitTime() <= nowTime then
-      local status = bullets_list[i].update()
-      if status == false then
-        table.remove(bullets_list, i)
+function love.mousereleased(x, y, button)
+	-- if pause == false then
+	    if button == 'l' then
+	        if gamemode == "menu" then
+	            if x >= 400-titlemenu.width/2 and x <= 400+titlemenu.width/2 then
+	                if y >= 250 and y <= 250+titlemenu.height then
+	                    gamemode = "play"
+	                -- elseif y >= 270+titlemenu.height and y <= 270+titlemenu.height*2 then
+	                --     help = true
+	                -- elseif y >= 290+titlemenu.height*2 and y <= 290+titlemenu.height*3 then
+	                --     love.event.push('q')
+	                 end
+	            end
+	        -- elseif help then
+	        --     if x >= 565 and x <= 645 and y >= 490 and y <= 510 then
+	        --         help = false
+	        --     end
+           end
+          
       end
-    end
-  end
-
-  -- Update Enemy's attack, using two coroutines! One for shot speed and other as timer
-  if enemy_fire.getWaitTime() <= nowTime then
-    -- Wait time between blips shots
-    enemy_fire.update()
-  end
-  local attack_lst = enemy_fire.getEnemyFireList()
-  -- Blips bullet speed
-  for i=#attack_lst,1,-1 do
---    attack_lst[i].collision()
-    if attack_lst[i].getWaitTime() <= nowTime then
-      local status = attack_lst[i].update()
-      if status == false then
-        enemy_fire.removeEnemyFireList(i)
-      end
-    end
-  end
+  -- end
 end
