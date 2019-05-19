@@ -50,14 +50,17 @@ local function newplayer ()
   local speed = 1.5
   local fire_rate = 0.5 -- time between shots
   local last_shot = 0
+  local shipImg = love.graphics.newImage("ship.png");
+
 
   return {
     try = function () return x end, -- TODO Delete and remove from keypressed
 
     update = function (dt)
+      shipImg = love.graphics.newImage("ship.png");
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
-      if love.keyboard.isDown('left') then 
+      if love.keyboard.isDown('left') then
         player.incX(-speed)
         shipImg = love.graphics.newImage("l.png")
       end
@@ -276,13 +279,14 @@ end
 function love.load()
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
-  bg.width=bg.image:getWidth()  
-  shipImg = love.graphics.newImage("ship.png");
+  bg.width=bg.image:getWidth()
 
   item_respawn = love.timer.getTime() + love.math.random(6,10)
   attack_respawn = love.timer.getTime() + 2.0 -- TODO testing: enemy shooting
   player =  newplayer()
   bullets_list = {}
+  -- TODO: Try to delete attack_respawn and use coroutine
+  -- enemy_fire = newAttackList()
   enemy_fire = {}
   items_list = {}
   listabls = {}
@@ -297,7 +301,7 @@ function love.draw()
   --  Draw Images
   love.graphics.draw(bg.image, bg.x1, bg.y1)
   love.graphics.draw(bg.image, bg.x2, bg.y2)
-  
+
   player.draw()
   for i = 1,#listabls do
     listabls[i].draw()
