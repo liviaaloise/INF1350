@@ -128,7 +128,7 @@ local function newBullet (player)
       sy = sy - 4.0 -- *Para variar o "passo" da bullet
       for j = 1,#listabls do
         if listabls[j].affected(sx, sy) then
-          table.remove(listabls,j)
+          table.remove(listabls,j) -- TODO CHANGE HERE TO ALLOW/NOT ALLOW DAMADGE FOR TESTS
           break
         end
       end
@@ -252,7 +252,7 @@ local function newItem (sel, existence)
   local radius = 7.5
   local x = love.math.random(radius, width - 2*radius)
   local y = love.math.random(radius, height + 2*radius)
-  local clock = 0.025  -- TODO: Fix item speed back to 0.25
+  local clock = 0.25  -- TODO: Fix item speed back to 0.25
   local inactiveTime = 0
   local mode = {"inc_fire_rate", "dec_fire_rate", "inc_speed", "dec_speed"}
   local blink_mode = {"fill","line"}
@@ -265,10 +265,33 @@ local function newItem (sel, existence)
     coroutine.yield()
   end
 
+  local function gotcha (posX1, posY1, posX2, posY2)
+    if posX1 < x and posX2 > x then
+      if posY1 < y and posY2 > y then
+        player.incSpeed(0.3)
+        -- TODO: Update function to change player status like health, speed, fire rate....
+        active = false
+        return true
+      end
+      return false
+    end
+  end
+
   local function stay()
+    -- while active == true do
     while (created+existence) > love.timer.getTime() do
       -- make it blink
       blink = bit.band(1,blink+1) -- bitwise: 1 & blink+1
+
+      local posX1 = player.getX()
+      local posY1 = player.getY()
+      local posX2 = player.getXR()
+      local posY2 = player.getYL()
+      -- Check if player caught item
+      if gotcha(posX1, posY1, posX2, posY2) then
+        active = false
+        break
+      end
       wait(clock) -- blink frequency
     end
   end
@@ -282,17 +305,6 @@ local function newItem (sel, existence)
 
   return {
     update = exists(),
-    gotcha = function (posX1, posY1, posX2, posY2)
-      if posX1 < x and posX2 > x then
-        if posY1 < y and posY2 > y then
-          player.incSpeed(0.3)
-          -- TODO: Update function to change player status like health, speed, fire rate....
-          active = false
-          return true
-        end
-        return false
-      end
-    end,
     draw = function ()
       if active then
         love.graphics.arc(blink_mode[blink+1], x, y, radius, 0, math.pi*2)
@@ -311,14 +323,14 @@ local function newItemGenerator ()
 
   local wait = function (seg)
     await_time = love.timer.getTime() + seg
+    -- item_respawn = love.math.random(5,20)
     item_respawn = love.math.random(5,20)
-    -- item_respawn = love.math.random(5,10)
     coroutine.yield()
   end
   local function generate_item()
     while true do
       local sel = 0 -- TODO: Make use o sel to randomize items
-      local duration = love.math.random(5,20) -- time item will exists
+      local duration = love.math.random(3,12) -- time item will exists
       table.insert(lst,newItem(sel, duration))
       wait(item_respawn)
     end
@@ -363,7 +375,6 @@ function love.load()
   item_generator = newItemGenerator()
   player =  newPlayer()
   bullets_list = {}
-  -- TODO: Extend coroutine solution used for blips atacks to item generator
   listabls = {}
   for i = 1, 5 do
     listabls[i] = newBlip(i/3, 0)
@@ -410,11 +421,8 @@ function love.update(dt)
   end
   local items_lst = item_generator.getItemsList()
   for i = #items_lst,1,-1 do
-    print("Player Speed:", player.getSpeed()) -- TODO Test print
-    -- Check if player passed through item
-    if items_lst[i].gotcha(player.getX(), player.getY(), player.getXR(), player.getYL()) then
-      item_generator.removeItem(i)
-    elseif items_lst[i].getInactiveTime() <= nowTime then
+    -- print("Player Speed:", player.getSpeed()) -- TODO Test print
+    if items_lst[i].getInactiveTime() <= nowTime then
       local status = items_lst[i].update()
       if status == false then
         item_generator.removeItem(i)
