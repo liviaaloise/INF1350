@@ -66,12 +66,10 @@ local function newPlayer ()
       if love.keyboard.isDown('left') then
         player.incX(-speed)
         shipImg = ship_img_lst[2]
-        -- shipImg = love.graphics.newImage("l.png")
       end
       if love.keyboard.isDown('right') then
         player.incX(speed)
         shipImg = ship_img_lst[3]
-        -- shipImg = love.graphics.newImage("r.png")
       end
 
       if (x + rect_width) > width then
@@ -87,7 +85,7 @@ local function newPlayer ()
     getX = function () return x end,
     getXM = function () return x + rect_width/2 end,
     getY = function () return y end,
-    getYM = function () return y - rect_height/2 end,
+    getYL = function () return y - rect_height end, -- Y Lower bound
     incX = function (nx) x = x + nx end,
     incY = function (ny) y = y + ny end,
     getLastShot = function () return last_shot end,
@@ -102,6 +100,7 @@ local function newPlayer ()
     incSpeed = function (vel) speed = speed + vel end, -- TODO
 
     draw = function ()
+      love.graphics.rectangle("line", x, y, rect_width, rect_height) -- TODO remove
       love.graphics.draw(shipImg, x+(rect_width/2), y, 0, 1,1, rect_width/2, 0)
     end
   }
@@ -252,7 +251,7 @@ local function newItem (sel, existence)
   local radius = 7.5
   local x = love.math.random(radius, width - 2*radius)
   local y = love.math.random(radius, height + 2*radius)
-  local clock = 0.25
+  local clock = 0.025  -- TODO: Fix item speed back to 0.25
   local inactiveTime = 0
   local mode = {"inc_fire_rate", "dec_fire_rate", "inc_speed", "dec_speed"}
   local blink_mode = {"fill","line"}
@@ -305,13 +304,14 @@ end
 --                                                       -- Item Generator List
 local function newItemGenerator ()
   local lst = {}
-  local item_respawn = love.math.random(10,20) -- time between items creation
-  -- local item_respawn = love.math.random(6,10)
+  -- local item_respawn = love.math.random(10,20) -- time between items creation
+  local item_respawn = love.math.random(6,8)
   local await_time = love.timer.getTime() + item_respawn -- game starts without items
 
   local wait = function (seg)
     await_time = love.timer.getTime() + seg
-    item_respawn = love.math.random(5,20)
+    -- item_respawn = love.math.random(5,20)
+    item_respawn = love.math.random(5,9)
     coroutine.yield()
   end
   local function generate_item()
@@ -358,6 +358,7 @@ function love.load()
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
   bg.width=bg.image:getWidth()
+
   item_generator = newItemGenerator()
   player =  newPlayer()
   bullets_list = {}
@@ -410,7 +411,7 @@ function love.update(dt)
   for i = #items_lst,1,-1 do
     print("Player Speed:", player.getSpeed()) -- TODO Test print
     -- Check if player passed through item
-    if items_lst[i].gotcha(player.getXM(), player.getYM()) then
+    if items_lst[i].gotcha(player.getXM(), player.getYL()) then
       item_generator.removeItem(i)
     elseif items_lst[i].getInactiveTime() <= nowTime then
       local status = items_lst[i].update()
@@ -419,7 +420,7 @@ function love.update(dt)
       end
     end
   end
-  print("items size list:",#items_lst)
+  -- print("items size list:",#items_lst)
 
   -- Update blips
   for i = 1,#listabls do
