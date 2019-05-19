@@ -44,29 +44,34 @@ end
 
 --                                                                    -- Player
 local function newPlayer ()
-  local x = 0
+  local ship_img_lst = {love.graphics.newImage("ship.png"),
+                        love.graphics.newImage("l.png"),
+                        love.graphics.newImage("r.png")}
+  local shipImg = ship_img_lst[1]
+  local x = 200
   local y = 200
-  local rect_height = 10
-  local rect_width = 35
+  local rect_height = shipImg:getHeight()
+  local rect_width = shipImg:getWidth()
   local width, height = love.graphics.getDimensions( )
   local speed = 2.5
   local fire_rate = 0.5 -- shoot step
   local last_shot = 0
-  local shipImg = love.graphics.newImage("ship.png");
 
   return {
     update = function (dt)
       -- Make ship look straight if it's not going to left or right
-      shipImg = love.graphics.newImage("ship.png");
+      shipImg = ship_img_lst[1]
       if love.keyboard.isDown('up') then player.incY(-speed) end
       if love.keyboard.isDown('down') then player.incY(speed) end
       if love.keyboard.isDown('left') then
         player.incX(-speed)
-        shipImg = love.graphics.newImage("l.png")
+        shipImg = ship_img_lst[2]
+        -- shipImg = love.graphics.newImage("l.png")
       end
       if love.keyboard.isDown('right') then
         player.incX(speed)
-        shipImg = love.graphics.newImage("r.png")
+        shipImg = ship_img_lst[3]
+        -- shipImg = love.graphics.newImage("r.png")
       end
 
       if (x + rect_width) > width then
@@ -97,7 +102,7 @@ local function newPlayer ()
     incSpeed = function (vel) speed = speed + vel end, -- TODO
 
     draw = function ()
-      love.graphics.draw(shipImg, x+32, y, 0, 1,1, 32, 0)
+      love.graphics.draw(shipImg, x+(rect_width/2), y, 0, 1,1, rect_width/2, 0)
     end
   }
 end
@@ -112,7 +117,7 @@ local function newBullet (player)
   local bullet_wait = 0
   local width, height = love.graphics.getDimensions( )
   local bulletImg = love.graphics.newImage("shot.png")
-  local radius = 4
+  local radius = bulletImg:getHeight()/2
 
   local wait = function (seg)
     bullet_wait = love.timer.getTime() + seg
@@ -338,7 +343,6 @@ function love.keypressed(key)
   if key == 'a' then
     local last_shot = player.getLastShot()
     if (last_shot == 0) or (last_shot <= love.timer.getTime()) then
-      -- print("LAST SHOT", last_shot) todo remove print
       player.shoot_bullet()
       local bullet = newBullet(player)
       bullet.setSX(player.getXM())
@@ -398,13 +402,6 @@ function love.update(dt)
   player.update(dt)
 
   -- Update Items
-  -- TODO: Try another solution instead of using 'item_respawn' as a global variable, to reduce lag
-  -- if item_respawn < nowTime then
-  --   item_respawn = item_respawn + love.math.random(10,20) -- time to generate next item
-  --   table.insert(items_list, newItem(0, love.math.random(5,10))) -- time item will exist
-  -- end
-
-  -- Update Items
   if item_generator.getWaitTime() <= nowTime then
     -- time between items creation
     item_generator.update()
@@ -422,6 +419,7 @@ function love.update(dt)
       end
     end
   end
+  print("items size list:",#items_lst)
 
   -- Update blips
   for i = 1,#listabls do
@@ -455,6 +453,4 @@ function love.update(dt)
       end
     end
   end
-  print("Number of blips:", #listabls, #enemy_fire.getEnemyFireList())
-  print("Number of enemy shots:", #attack_lst)
 end
