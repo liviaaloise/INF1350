@@ -1,5 +1,5 @@
 --                                                                      -- Blip
-local function newblip (vel, posx)
+local function newBlip (vel, posx)
   local x, y = posx, 0
   local width, height = love.graphics.getDimensions( )
   local inactiveTime = 0
@@ -43,7 +43,7 @@ end
 
 
 --                                                                    -- Player
-local function newplayer ()
+local function newPlayer ()
   local x = 0
   local y = 200
   local rect_height = 10
@@ -104,7 +104,7 @@ end
 
 
 --                                                                    -- Bullet
-local function newbullet (player)
+local function newBullet (player)
   local sx = player.getXM()
   local sy = player.getY()
   local speed = 0.0005
@@ -153,7 +153,7 @@ end
 
 
 --                                                                    -- Attack
-local function newattack (blipXM, blipYL)
+local function newAttack (blipXM, blipYL)
   local x = blipXM
   local y = blipYL
   local step = 4.0
@@ -218,7 +218,7 @@ local function newAttackList ()
       for i=1,#listabls do
         local blpXM = listabls[i].getXM()
         local blpYL = listabls[i].getYL()
-        table.insert(lst, newattack(blpXM, blpYL))
+        table.insert(lst, newAttack(blpXM, blpYL))
       end
       wait(shot_cooldown)
     end
@@ -297,6 +297,41 @@ local function newItem (sel, existence)
   }
 end
 
+--                                                       -- Item Generator List
+local function newItemGenerator ()
+  local lst = {}
+  local item_respawn = love.math.random(10,20) -- time between items creation
+  -- local item_respawn = love.math.random(6,10)
+  local await_time = love.timer.getTime() + item_respawn -- game starts without items
+
+  local wait = function (seg)
+    await_time = love.timer.getTime() + seg
+    item_respawn = love.math.random(5,20)
+    coroutine.yield()
+  end
+  local function generate_item()
+    while true do
+      local sel = 0 -- TODO: Make use o sel to randomize items
+      local duration = love.math.random(5,10) -- time item will exists
+      table.insert(lst,newItem(sel, duration))
+      wait(item_respawn)
+    end
+  end
+  local function startUpdate ()
+    local wrapping = coroutine.create(generate_item)
+    return function ()
+      return coroutine.resume(wrapping)
+    end
+  end
+
+  return {
+    update = startUpdate(),
+    getWaitTime = function () return await_time end,
+    getItemsList = function () return lst end,
+    removeItem = function (i) table.remove(lst,i) end,
+  }
+end
+
 
 --    Keypressed
 function love.keypressed(key)
@@ -305,7 +340,7 @@ function love.keypressed(key)
     if (last_shot == 0) or (last_shot <= love.timer.getTime()) then
       -- print("LAST SHOT", last_shot) todo remove print
       player.shoot_bullet()
-      local bullet = newbullet(player)
+      local bullet = newBullet(player)
       bullet.setSX(player.getXM())
       table.insert(bullets_list, bullet)
     end
@@ -319,15 +354,13 @@ function love.load()
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
   bg.width=bg.image:getWidth()
-
-  item_respawn = love.timer.getTime() + love.math.random(6,10)
-  player =  newplayer()
+  item_generator = newItemGenerator()
+  player =  newPlayer()
   bullets_list = {}
   -- TODO: Extend coroutine solution used for blips atacks to item generator
-  items_list = {}
   listabls = {}
   for i = 1, 5 do
-    listabls[i] = newblip(i/3, 0)
+    listabls[i] = newBlip(i/3, 0)
   end
   enemy_fire = newAttackList()
 end
@@ -346,12 +379,13 @@ function love.draw()
   for i = 1,#bullets_list do
     bullets_list[i].draw()
   end
-  for i = 1,#items_list do
-    items_list[i].draw()
-  end
   local attack_lst = enemy_fire.getEnemyFireList()
   for i=1,#attack_lst do
     attack_lst[i].draw()
+  end
+  local items_lst = item_generator.getItemsList()
+  for i=1,#items_lst do
+    items_lst[i].draw()
   end
 end
 
@@ -365,9 +399,28 @@ function love.update(dt)
 
   -- Update Items
   -- TODO: Try another solution instead of using 'item_respawn' as a global variable, to reduce lag
-  if item_respawn < nowTime then
-    item_respawn = item_respawn + love.math.random(10,20) -- time to generate next item
-    table.insert(items_list, newItem(0, love.math.random(5,10))) -- time item will exist
+  -- if item_respawn < nowTime then
+  --   item_respawn = item_respawn + love.math.random(10,20) -- time to generate next item
+  --   table.insert(items_list, newItem(0, love.math.random(5,10))) -- time item will exist
+  -- end
+
+  -- Update Items
+  if item_generator.getWaitTime() <= nowTime then
+    -- time between items creation
+    item_generator.update()
+  end
+  local items_lst = item_generator.getItemsList()
+  for i = #items_lst,1,-1 do
+    print("Player Speed:", player.getSpeed()) -- TODO Test print
+    -- Check if player passed through item
+    if items_lst[i].gotcha(player.getXM(), player.getYM()) then
+      item_generator.removeItem(i)
+    elseif items_lst[i].getInactiveTime() <= nowTime then
+      local status = items_lst[i].update()
+      if status == false then
+        item_generator.removeItem(i)
+      end
+    end
   end
 
   -- Update blips
@@ -387,21 +440,7 @@ function love.update(dt)
     end
   end
 
-  -- Update Items
-  for i = #items_list,1,-1 do
-    print("Player Speed:", player.getSpeed()) -- TODO Test print
-    -- Check if player passed through item
-    if items_list[i].gotcha(player.getXM(), player.getYM()) then
-      table.remove(items_list, i)
-    elseif items_list[i].getInactiveTime() <= nowTime then
-      local status = items_list[i].update()
-      if status == false then
-        table.remove(items_list, i)
-      end
-    end
-  end
-
-  -- Using two coroutines! One for shot speed and other as timer
+  -- Update Enemy's attack, using two coroutines! One for shot speed and other as timer
   if enemy_fire.getWaitTime() <= nowTime then
     -- Wait time between blips shots
     enemy_fire.update()
