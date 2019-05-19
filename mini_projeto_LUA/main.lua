@@ -85,7 +85,8 @@ local function newPlayer ()
     getX = function () return x end,
     getXM = function () return x + rect_width/2 end,
     getY = function () return y end,
-    getYL = function () return y - rect_height end, -- Y Lower bound
+    getYL = function () return y + rect_height end, -- Y Lower bound
+    getXR = function () return x + rect_width end, -- most far right X
     incX = function (nx) x = x + nx end,
     incY = function (ny) y = y + ny end,
     getLastShot = function () return last_shot end,
@@ -281,9 +282,9 @@ local function newItem (sel, existence)
 
   return {
     update = exists(),
-    gotcha = function (posX, posY)
-      if posX > x - radius and posX < x + radius then
-        if posY > y - radius and posY < y + radius then
+    gotcha = function (posX1, posY1, posX2, posY2)
+      if posX1 < x and posX2 > x then
+        if posY1 < y and posY2 > y then
           player.incSpeed(0.3)
           -- TODO: Update function to change player status like health, speed, fire rate....
           active = false
@@ -310,14 +311,14 @@ local function newItemGenerator ()
 
   local wait = function (seg)
     await_time = love.timer.getTime() + seg
-    -- item_respawn = love.math.random(5,20)
-    item_respawn = love.math.random(5,9)
+    item_respawn = love.math.random(5,20)
+    -- item_respawn = love.math.random(5,10)
     coroutine.yield()
   end
   local function generate_item()
     while true do
       local sel = 0 -- TODO: Make use o sel to randomize items
-      local duration = love.math.random(5,10) -- time item will exists
+      local duration = love.math.random(5,20) -- time item will exists
       table.insert(lst,newItem(sel, duration))
       wait(item_respawn)
     end
@@ -411,7 +412,7 @@ function love.update(dt)
   for i = #items_lst,1,-1 do
     print("Player Speed:", player.getSpeed()) -- TODO Test print
     -- Check if player passed through item
-    if items_lst[i].gotcha(player.getXM(), player.getYL()) then
+    if items_lst[i].gotcha(player.getX(), player.getY(), player.getXR(), player.getYL()) then
       item_generator.removeItem(i)
     elseif items_lst[i].getInactiveTime() <= nowTime then
       local status = items_lst[i].update()
