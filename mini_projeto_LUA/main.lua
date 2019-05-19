@@ -13,6 +13,7 @@ local function newBlip (vel, posx)
 
   local function up()
     while true do
+      -- TODO: IMPOVE ENEMIES
       x = x + 15 -- x agora nao eh mais incrementado por vel
       if x > width then
         x = 0
@@ -105,6 +106,7 @@ local function newPlayer ()
 
     draw = function ()
       love.graphics.rectangle("line", x, y, rect_width, rect_height) -- TODO remove
+      -- love.graphics.arc("fill", 400, 300, 10, 0, math.pi) -- TODO delete
       love.graphics.draw(shipImg, x+(rect_width/2), y, 0, 1,1, rect_width/2, 0)
     end
   }
@@ -278,31 +280,39 @@ local function newItem (sel, existence)
   -- use SEL to make different types of items TODO
   local width, height = love.graphics.getDimensions()
   local radius = 7.5
-  local x = love.math.random(radius, width - 2*radius)
-  local y = love.math.random(radius, height + 2*radius)
+  local x = love.math.random(radius*4, width - 4*radius)
+  local y = love.math.random(radius*4, height - 4*radius)
   local clock = 0.25  -- TODO: Fix item speed back to 0.25
   local inactiveTime = 0
-  local mode = {"inc_fire_rate", "dec_fire_rate", "inc_speed", "dec_speed"}
+  local modes = { "inc_speed", "inc_fire_rate", "dec_fire_rate", "dec_speed"}
+  local mode = modes[sel]
   local blink_mode = {"fill","line"}
   local blink = 0
   local active = true
   local created = love.timer.getTime()
 
-  local wait = function (seg)
-    inactiveTime = love.timer.getTime() + seg
-    coroutine.yield()
-  end
-
   local function gotcha (posX1, posY1, posX2, posY2)
     if posX1 < x and posX2 > x then
       if posY1 < y and posY2 > y then
-        player.incSpeed(0.3)
-        -- TODO: Update function to change player status like health, speed, fire rate....
         active = false
+        if mode == "inc_speed" then player.incSpeed(0.3)
+        elseif mode == "inc_fire_rate" then
+          if player.getFireRate() >= 0.1 then
+            player.incFireRate(-0.05)
+          end
+        elseif mode == "dec_fire_rate" then player.incFireRate(0.1)
+        elseif mode == "dec_speed" then player.incSpeed(-0.3) end
+
+        -- TODO: Update function to change player status like health, speed, fire rate....
         return true
       end
       return false
     end
+  end
+
+  local wait = function (seg)
+    inactiveTime = love.timer.getTime() + seg
+    coroutine.yield()
   end
 
   local function stay()
@@ -333,33 +343,39 @@ local function newItem (sel, existence)
 
   return {
     update = exists(),
+    getInactiveTime = function () return inactiveTime end,
     draw = function ()
       if active then
-        love.graphics.arc(blink_mode[blink+1], x, y, radius, 0, math.pi*2)
+        if mode == "inc_speed" then
+          love.graphics.arc(blink_mode[blink+1], x, y, radius, 0, math.pi*2)
+        elseif mode == "inc_fire_rate" then
+          love.graphics.arc(blink_mode[blink+1], x, y, radius+2.5, math.pi/2, math.pi*2)
+        elseif mode == "dec_fire_rate" then
+          love.graphics.arc(blink_mode[blink+1], x, y, radius+2.5, math.pi/2, 3*math.pi/2)
+        elseif mode == "dec_speed" then
+          love.graphics.arc(blink_mode[blink+1], x, y, radius+2.5, 0, math.pi)
+        end
       end
-    end,
-    getInactiveTime = function () return inactiveTime end
+    end
   }
 end
 
 --                                                       -- Item Generator List
 local function newItemGenerator ()
   local lst = {}
-  -- local item_respawn = love.math.random(10,20) -- time between items creation
   local item_respawn = love.math.random(6,8)
   local await_time = love.timer.getTime() + item_respawn -- game starts without items
 
   local wait = function (seg)
     await_time = love.timer.getTime() + seg
-    -- item_respawn = love.math.random(5,20)
-    item_respawn = love.math.random(5,20)
+    item_respawn = love.math.random(4,20)
     coroutine.yield()
   end
   local function generate_item()
     while true do
-      local sel = 0 -- TODO: Make use o sel to randomize items
-      local duration = love.math.random(3,12) -- time item will exists
-      table.insert(lst,newItem(sel, duration))
+      local sel = love.math.random(1,4)
+      local duration = love.math.random(3,15) -- time item will exists
+      table.insert(lst,newItem(sel, duration)) -- TODO FIX
       wait(item_respawn)
     end
   end
@@ -396,6 +412,8 @@ end
 --      LOAD
 function love.load()
   love.window.setTitle("Lua Game")
+  Graphics = {}
+
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
   bg.width=bg.image:getWidth()
@@ -449,7 +467,10 @@ function love.update(dt)
   end
   local items_lst = item_generator.getItemsList()
   for i = #items_lst,1,-1 do
-    -- print("Player Speed:", player.getSpeed()) -- TODO Test print
+
+    print("Player Speed:", player.getSpeed()) -- TODO Test print
+    print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
+
     if items_lst[i].getInactiveTime() <= nowTime then
       local status = items_lst[i].update()
       if status == false then
