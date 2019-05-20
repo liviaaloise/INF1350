@@ -113,6 +113,9 @@ local function newPlayer ()
 
   return {
     update = function (dt)
+      if health == 0 then
+        gamemode = "over"
+      end
       -- Make ship look straight if it's not going to left or right
       shipImg = ship_img_lst[1]
       if love.keyboard.isDown('up') then player.incY(-speed) end
@@ -248,9 +251,7 @@ local function newAttack (blipXM, blipYL)
     if x >= px and x <= px2 then
       if y >= py and y <=py2 then
 --          "pegou" no player
-        print("Hit player")
         player.setHp(playerDamadge)
-        print("Player health", player.getHp())
         return true
       end
     end
@@ -460,15 +461,29 @@ function love.keypressed(key)
       table.insert(bullets_list, bullet)
     end
   end
+  if key == 'p' then
+    pause = not pause
+    print("pause", pause)
+  end
 end
 
 
 --      LOAD
 function love.load()
   love.window.setTitle("Lua Game")
+
+  font =  {
+    normal = love.graphics.setNewFont("Starjedi.ttf", 14),
+    large =  love.graphics.setNewFont("Starjedi.ttf", 30)
+    }
+  -- TODO: check if this can be in player as local variables
+  gamemode = "play"
+  pause = false
+
   --  Load Images
-  bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0}
+  bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0, height=0}
   bg.width=bg.image:getWidth()
+  bg.height = bg.image:getHeight()
 
   item_generator = newItemGenerator()
   player =  newPlayer()
@@ -484,96 +499,115 @@ end
 --      DRAW
 function love.draw()
   --  Draw Images
-  love.graphics.draw(bg.image, bg.x1, bg.y1)
-  love.graphics.draw(bg.image, bg.x2, bg.y2)
+  if pause then
+    love.graphics.setFont(font.large)
+    love.graphics.print("pause", 300, 300)
+  else
+    if gamemode == "play" then
+      love.graphics.draw(bg.image, bg.x1, bg.y1)
+      love.graphics.draw(bg.image, bg.x2, bg.y2)
+      love.graphics.setFont(font.normal)
+      love.graphics.print("HEALTH: "..player.getHp(), 20, 560)
 
-  player.draw()
-  for i = 1,#listabls do
-    listabls[i].draw()
-  end
-  for i = 1,#bullets_list do
-    bullets_list[i].draw()
-  end
-  local attack_lst = enemy_fire.getEnemyFireList()
-  for i=1,#attack_lst do
-    attack_lst[i].draw()
-  end
-  local items_lst = item_generator.getItemsList()
-  for i=1,#items_lst do
-    items_lst[i].draw()
+      player.draw()
+      for i = 1,#listabls do
+        listabls[i].draw()
+      end
+      for i = 1,#bullets_list do
+        bullets_list[i].draw()
+      end
+      local attack_lst = enemy_fire.getEnemyFireList()
+      for i=1,#attack_lst do
+        attack_lst[i].draw()
+      end
+      local items_lst = item_generator.getItemsList()
+      for i=1,#items_lst do
+        items_lst[i].draw()
+      end
+
+    elseif gamemode == "over" then
+      love.graphics.setFont(font.large)
+      love.graphics.print("game over", 300, 150)
+    end
   end
 end
 
 
 --    LOVE UPDATE
 function love.update(dt)
-  local nowTime = love.timer.getTime()
 
-  -- Update Player
-  player.update(dt)
+  if not pause then
+    if gamemode == "play" then
 
-  -- Update Items
-  if item_generator.getWaitTime() <= nowTime then
-    -- time between items creation
-    item_generator.update()
-  end
-  local items_lst = item_generator.getItemsList()
-  for i = #items_lst,1,-1 do
-    -- print("Player Speed:", player.getSpeed()) -- TODO Test print
-    -- print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
-    if items_lst[i].getInactiveTime() <= nowTime then
-      local status = items_lst[i].update()
-      if status == false then
-        item_generator.removeItem(i)
+      local nowTime = love.timer.getTime()
+
+      -- Update Player
+      player.update(dt)
+
+      -- Update Items
+      if item_generator.getWaitTime() <= nowTime then
+        -- time between items creation
+        item_generator.update()
       end
-    end
-  end
-  -- print("items size list:",#items_lst)
-
-  -- Update blips
-  -- if blip_generator.getWaitTime() <= nowTime then
-    -- blip_generator.update()
-  -- end
-  -- local listabls = blip_generator.getBlipsList()
-
-  -- print("KILLS:", player.getKillCount())
-
-  -- print("listabls size:", #listabls)
-  for i = 1,#listabls do
-    if listabls[i].getInactiveTime() <= nowTime then
-      print("BLIP: HP:", listabls[i].getHp())
-      listabls[i].update()
-    end
-  end
-  if #listabls == 0 then
-    local kills = player.getKillCount()
-    for i=1, kills do
-      listabls[i] = newBlip(10*kills/5)
-    end
-  end
-
-  -- Update Bullets
-  for i = #bullets_list,1,-1 do
-    if bullets_list[i].getWaitTime() <= nowTime then
-      local status = bullets_list[i].update()
-      if status == false then
-        table.remove(bullets_list, i)
+      local items_lst = item_generator.getItemsList()
+      for i = #items_lst,1,-1 do
+        -- print("Player Speed:", player.getSpeed()) -- TODO Test print
+        -- print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
+        if items_lst[i].getInactiveTime() <= nowTime then
+          local status = items_lst[i].update()
+          if status == false then
+            item_generator.removeItem(i)
+          end
+        end
       end
-    end
-  end
+      -- print("items size list:",#items_lst)
 
-  -- Update Enemy's attack, using two coroutines! One for shot speed and other as timer
-  if enemy_fire.getWaitTime() <= nowTime then
-    -- Wait time between blips shots
-    enemy_fire.update()
-  end
-  local attack_lst = enemy_fire.getEnemyFireList()
-  -- Blips bullet speed
-  for i=#attack_lst,1,-1 do
-    if attack_lst[i].getWaitTime() <= nowTime then
-      local status = attack_lst[i].update()
-      if status == false then
-        enemy_fire.removeEnemyFireList(i)
+      -- Update blips
+      -- if blip_generator.getWaitTime() <= nowTime then
+        -- blip_generator.update()
+      -- end
+      -- local listabls = blip_generator.getBlipsList()
+
+      -- print("KILLS:", player.getKillCount())
+
+      -- print("listabls size:", #listabls)
+      for i = 1,#listabls do
+        if listabls[i].getInactiveTime() <= nowTime then
+          print("BLIP: HP:", listabls[i].getHp())
+          listabls[i].update()
+        end
+      end
+      if #listabls == 0 then
+        local kills = player.getKillCount()
+        for i=1, kills do
+          listabls[i] = newBlip(10*kills/5)
+        end
+      end
+
+      -- Update Bullets
+      for i = #bullets_list,1,-1 do
+        if bullets_list[i].getWaitTime() <= nowTime then
+          local status = bullets_list[i].update()
+          if status == false then
+            table.remove(bullets_list, i)
+          end
+        end
+      end
+
+      -- Update Enemy's attack, using two coroutines! One for shot speed and other as timer
+      if enemy_fire.getWaitTime() <= nowTime then
+        -- Wait time between blips shots
+        enemy_fire.update()
+      end
+      local attack_lst = enemy_fire.getEnemyFireList()
+      -- Blips bullet speed
+      for i=#attack_lst,1,-1 do
+        if attack_lst[i].getWaitTime() <= nowTime then
+          local status = attack_lst[i].update()
+          if status == false then
+            enemy_fire.removeEnemyFireList(i)
+          end
+        end
       end
     end
   end
