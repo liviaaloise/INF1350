@@ -8,8 +8,9 @@ local function newBlip (life)
   local inactiveTime = 0
   local clock = love.math.random(2, 4) / love.math.random(4, 6)
   local step = love.math.random(5, 12)
-  local health = life
-
+  local health = life 
+  local initialLife = life
+  
   local wait = function (seg)
     inactiveTime = love.timer.getTime() + seg
     coroutine.yield()
@@ -24,9 +25,9 @@ local function newBlip (life)
         end
       else -- Else Right To Left direction
         x = x - step
-         if x-square_size < 0 then
-           x = width
-         end
+        if x-square_size < 0 then
+          x = width
+        end
       end
       wait(clock)
     end
@@ -50,7 +51,8 @@ local function newBlip (life)
     getYL = function () return y + square_size end, -- Lower Y
     getHp = function () return health end,
     setHp = function (hp) health = health + hp end,
-    getInactiveTime = function () return inactiveTime end
+    getInactiveTime = function () return inactiveTime end,
+    getLife = function() return initialLife end
   }
 end
 
@@ -97,8 +99,8 @@ end
 --                                                                    -- Player
 local function newPlayer ()
   local ship_img_lst = {love.graphics.newImage("ship.png"),
-                        love.graphics.newImage("l.png"),
-                        love.graphics.newImage("r.png")}
+    love.graphics.newImage("l.png"),
+    love.graphics.newImage("r.png")}
   local shipImg = ship_img_lst[1]
   local width, height = love.graphics.getDimensions( )
   local x = 200
@@ -460,7 +462,6 @@ function love.keypressed(key)
   end
   if key == 'p' then
     pause = not pause
-    print("pause", pause)
   end
 end
 
@@ -488,6 +489,7 @@ function love.load()
   gamemode = "menu"
   pause = false
   help = false
+  level = 1
 
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0, height=0}
@@ -500,7 +502,7 @@ function love.load()
   bullets_list = {}
   listabls = {}
   for i = 1, 5 do
-    table.insert(listabls, newBlip(10))
+    table.insert(listabls, newBlip(level*10))
   end
   enemy_fire = newAttackList()
 end
@@ -523,6 +525,7 @@ function love.draw()
       love.graphics.draw(bg.image, bg.x2, bg.y2)
       love.graphics.setFont(font.normal)
       love.graphics.print("HEALTH: "..player.getHp(), 20, 560)
+      love.graphics.print("hits to kill: " ..level, 20, 540)
 
       player.draw()
       for i = 1,#listabls do
@@ -546,14 +549,14 @@ function love.draw()
   end
 
   if help then
-		--draw help window
-		love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
-		
-		--Cancel button
+    --draw help window
+    love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
+
+    --Cancel button
     love.graphics.setFont(font.large)
     love.graphics.print("Close help", 570, 505, 0, 1,1)
-  
-	end
+
+  end
 end
 
 
@@ -588,7 +591,7 @@ function love.update(dt)
 
       -- Update blips
       -- if blip_generator.getWaitTime() <= nowTime then
-        -- blip_generator.update()
+      -- blip_generator.update()
       -- end
       -- local listabls = blip_generator.getBlipsList()
 
@@ -604,7 +607,8 @@ function love.update(dt)
       if #listabls == 0 then
         local kills = player.getKillCount()
         for i=1, kills do
-          listabls[i] = newBlip(10*kills/5)
+          level = kills/5
+          listabls[i] = newBlip(level * 10 )
         end
       end
 
@@ -638,22 +642,22 @@ function love.update(dt)
 end
 
 function love.mousereleased(x, y, button)
-	if pause == false then
-	    if button == 1 then
-	        if gamemode == "menu" and not help then
-	            if x >= 440-titlemenu.width/2 and x <= 360+titlemenu.width/2 then
-                  if y >= 180 and y <= titlemenu.height+20 then
-	                    gamemode = "play"
-                  elseif y >= titlemenu.height + 110 and y <= titlemenu.height*2 - 60 then
-	                    help = true
-	                end
-	            end
-	        elseif help then
-              if x >= 570 and x <= 770 and y >= 505 and y <= 555 then
-	                help = false
-	            end
-	        end
-	        
-	    end
-	end
+  if pause == false then
+    if button == 1 then
+      if gamemode == "menu" and not help then
+        if x >= 440-titlemenu.width/2 and x <= 360+titlemenu.width/2 then
+          if y >= 180 and y <= titlemenu.height+20 then
+            gamemode = "play"
+          elseif y >= titlemenu.height + 110 and y <= titlemenu.height*2 - 60 then
+            help = true
+          end
+        end
+      elseif help then
+        if x >= 570 and x <= 770 and y >= 505 and y <= 555 then
+          help = false
+        end
+      end
+
+    end
+  end
 end
