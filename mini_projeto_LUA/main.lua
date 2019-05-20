@@ -210,7 +210,7 @@ local function newAttack (blipXM, blipYL)
     local py2 = player.getYL()
     if x >= px and x <= px2 then
       if y >= py and y <=py2 then
-        --          "pegou" no player 
+        --          "pegou" no player
         player.setHp(playerDamadge)
         return true
       end
@@ -474,12 +474,12 @@ function love.draw()
     love.graphics.setFont(font.large)
     love.graphics.print("pause", 300, 300)
   else
-    if gamemode == "menu" then 
+    if gamemode == "menu" then
       love.graphics.draw(titlemenu.play, 400-titlemenu.width/2, 100)
       love.graphics.draw(titlemenu.help, 400-titlemenu.width/2, 100+ titlemenu.height)
 
 
-    elseif gamemode == "play" then 
+    elseif gamemode == "play" then
       love.graphics.draw(bg.image, bg.x1, bg.y1)
       love.graphics.draw(bg.image, bg.x2, bg.y2)
       love.graphics.setFont(font.normal)
@@ -509,11 +509,11 @@ function love.draw()
   if help then
 		--draw help window
 		love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
-		
+
 		--Cancel button
     love.graphics.setFont(font.large)
     love.graphics.print("Close help", 570, 505, 0, 1,1)
-  
+
 	end
 end
 
@@ -546,6 +546,7 @@ function love.update(dt)
         end
       end
 
+      print(#listabls)
       for i = 1,#listabls do
         if listabls[i].getInactiveTime() <= nowTime then
           listabls[i].update()
@@ -603,7 +604,7 @@ function love.mousereleased(x, y, button)
 	                help = false
 	            end
 	        end
-	        
+
 	    end
 	end
 end
