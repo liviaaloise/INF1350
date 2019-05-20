@@ -17,7 +17,7 @@ local function newBlip (life)
 
   local function up()
     while true do
-      if y%2 == 0 then -- If blip is in row 0, 50 or 100 : Left To Right direction
+      if y % 2 == 0 then -- If blip is in row 0, 50 or 100 : Left To Right direction
         x = x + step
         if x+square_size > width then
           x = 0
@@ -53,45 +53,6 @@ local function newBlip (life)
     getInactiveTime = function () return inactiveTime end
   }
 end
-
-
--- --                                                       -- Blip Generator List
--- local function newBlipGenerator ()
---   local respawn = 5
---   local await_time = love.timer.getTime() + respawn -- game starts without items
---   local width, height = love.graphics.getDimensions( )
---   -- local lst = {}
---   -- local wave = 0  TODO: Maybe extend gameplay to consider waves, after play kill first row
---   -- second wave could have two rows, third could have three....
---
---   local wait = function (seg)
---     await_time = love.timer.getTime() + seg
---     coroutine.yield()
---   end
---   local function generate_blip()
---     while true do
---       -- for i = 1, 10 do
---       table.insert(listabls, newBlip())
---         -- table.insert(listabls, newBlip(0, 0, 1))
---         -- table.insert(listabls, newBlip(width, 20, 2))
---       -- end
---       wait(respawn)
---     end
---   end
---   local function startUpdate ()
---     local wrapping = coroutine.create(generate_blip)
---     return function ()
---       return coroutine.resume(wrapping)
---     end
---   end
---
---   return {
---     update = startUpdate(),
---     getWaitTime = function () return await_time end,
---     -- getBlipsList = function () return lst end,
---     -- removeBlip = function (i) table.remove(lst,i) end,
---   }
--- end
 
 
 --                                                                    -- Player
@@ -160,7 +121,7 @@ local function newPlayer ()
     incSpeed = function (vel) speed = speed + vel end,
 
     draw = function ()
-      love.graphics.rectangle("line", x, y, rect_width, rect_height) -- TODO remove or leave it?
+      love.graphics.rectangle("line", x, y, rect_width, rect_height)
       love.graphics.draw(shipImg, x+(rect_width/2), y, 0, 1,1, rect_width/2, 0)
     end
   }
@@ -556,20 +517,9 @@ function love.update(dt)
           end
         end
       end
-      -- print("items size list:",#items_lst)
 
-      -- Update blips
-      -- if blip_generator.getWaitTime() <= nowTime then
-        -- blip_generator.update()
-      -- end
-      -- local listabls = blip_generator.getBlipsList()
-
-      -- print("KILLS:", player.getKillCount())
-
-      -- print("listabls size:", #listabls)
       for i = 1,#listabls do
         if listabls[i].getInactiveTime() <= nowTime then
-          print("BLIP: HP:", listabls[i].getHp())
           listabls[i].update()
         end
       end
