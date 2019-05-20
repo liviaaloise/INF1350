@@ -36,7 +36,7 @@ local function newBlip (life)
     affected = function (posX, posY)
       if posX >= x and posX <= x+square_size then
         if posY >= y and posY <=y + square_size then
---          "pegou" o blip
+          --          "pegou" o blip
           return true
         end
       else
@@ -210,7 +210,7 @@ local function newAttack (blipXM, blipYL)
     local py2 = player.getYL()
     if x >= px and x <= px2 then
       if y >= py and y <=py2 then
---          "pegou" no player
+        --          "pegou" no player 
         player.setHp(playerDamadge)
         return true
       end
@@ -433,14 +433,28 @@ function love.load()
   font =  {
     normal = love.graphics.setNewFont("Starjedi.ttf", 14),
     large =  love.graphics.setNewFont("Starjedi.ttf", 30)
-    }
-  gamemode = "play"
+  }
+
+  titlemenu = {
+    play=love.graphics.newImage("play.png"),
+    help=love.graphics.newImage("help.png"),
+    width=0,
+    height=0
+  }
+  titlemenu.width = titlemenu.play:getWidth()
+  titlemenu.height = titlemenu.play:getHeight()
+  print(titlemenu.height, titlemenu.width)
+
+
+  gamemode = "menu"
   pause = false
+  help = false
 
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0, height=0}
   bg.width=bg.image:getWidth()
   bg.height = bg.image:getHeight()
+  helpImg = love.graphics.newImage("instrucoes.png")
 
   item_generator = newItemGenerator()
   player =  newPlayer()
@@ -460,7 +474,12 @@ function love.draw()
     love.graphics.setFont(font.large)
     love.graphics.print("pause", 300, 300)
   else
-    if gamemode == "play" then
+    if gamemode == "menu" then 
+      love.graphics.draw(titlemenu.play, 400-titlemenu.width/2, 100)
+      love.graphics.draw(titlemenu.help, 400-titlemenu.width/2, 100+ titlemenu.height)
+
+
+    elseif gamemode == "play" then 
       love.graphics.draw(bg.image, bg.x1, bg.y1)
       love.graphics.draw(bg.image, bg.x2, bg.y2)
       love.graphics.setFont(font.normal)
@@ -481,12 +500,21 @@ function love.draw()
       for i=1,#items_lst do
         items_lst[i].draw()
       end
-
     elseif gamemode == "over" then
       love.graphics.setFont(font.large)
       love.graphics.print("game over", 300, 150)
     end
   end
+
+  if help then
+		--draw help window
+		love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
+		
+		--Cancel button
+    love.graphics.setFont(font.large)
+    love.graphics.print("Close help", 570, 505, 0, 1,1)
+  
+	end
 end
 
 
@@ -557,4 +585,25 @@ function love.update(dt)
       end
     end
   end
+end
+
+function love.mousereleased(x, y, button)
+	if pause == false then
+	    if button == 1 then
+	        if gamemode == "menu" and not help then
+	            if x >= 440-titlemenu.width/2 and x <= 360+titlemenu.width/2 then
+                  if y >= 180 and y <= titlemenu.height+20 then
+	                    gamemode = "play"
+                  elseif y >= titlemenu.height + 110 and y <= titlemenu.height*2 - 60 then
+	                    help = true
+	                end
+	            end
+	        elseif help then
+              if x >= 570 and x <= 770 and y >= 505 and y <= 555 then
+	                help = false
+	            end
+	        end
+	        
+	    end
+	end
 end
