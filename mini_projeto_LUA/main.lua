@@ -19,12 +19,12 @@ local function newBlip (life)
     while true do
       if y%2 == 0 then -- If blip is in row 0, 50 or 100 : Left To Right direction
         x = x + step
-        if x > width then
+        if x+square_size > width then
           x = 0
         end
       else -- Else Right To Left direction
         x = x - step
-         if x < 0 then
+         if x-square_size < 0 then
            x = width
          end
       end
@@ -154,14 +154,13 @@ local function newPlayer ()
     setHp = function (hp) health= health + hp end,
     incKillCount = function () kill_count = kill_count + 1 end,
     getKillCount = function () return kill_count end,
-    -- TODO: Test functions
     getSpeed = function () return speed end,
     getFireRate = function () return fire_rate end,
-    incFireRate = function (i) fire_rate = fire_rate + i end, -- TODO
-    incSpeed = function (vel) speed = speed + vel end, -- TODO
+    incFireRate = function (i) fire_rate = fire_rate + i end,
+    incSpeed = function (vel) speed = speed + vel end,
 
     draw = function ()
-      love.graphics.rectangle("line", x, y, rect_width, rect_height) -- TODO remove
+      love.graphics.rectangle("line", x, y, rect_width, rect_height) -- TODO remove or leave it?
       love.graphics.draw(shipImg, x+(rect_width/2), y, 0, 1,1, rect_width/2, 0)
     end
   }
@@ -266,7 +265,6 @@ local function newAttack (blipXM, blipYL)
       end
       if y >= height then
         status = false
-        -- TODO: Also set status = false if shot hit player
       end
       wait(speed)
     end
@@ -336,7 +334,6 @@ end
 
 --                                                                     -- Items
 local function newItem (sel, existence)
-  -- use SEL to make different types of items TODO
   local width, height = love.graphics.getDimensions()
   local radius = 7.5
   local x = love.math.random(radius*4, width - 4*radius)
@@ -476,7 +473,6 @@ function love.load()
     normal = love.graphics.setNewFont("Starjedi.ttf", 14),
     large =  love.graphics.setNewFont("Starjedi.ttf", 30)
     }
-  -- TODO: check if this can be in player as local variables
   gamemode = "play"
   pause = false
 
