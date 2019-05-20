@@ -483,7 +483,6 @@ function love.load()
   }
   titlemenu.width = titlemenu.play:getWidth()
   titlemenu.height = titlemenu.play:getHeight()
-  print(titlemenu.height, titlemenu.width)
 
 
   gamemode = "menu"
@@ -524,8 +523,9 @@ function love.draw()
       love.graphics.draw(bg.image, bg.x1, bg.y1)
       love.graphics.draw(bg.image, bg.x2, bg.y2)
       love.graphics.setFont(font.normal)
-      love.graphics.print("HEALTH: "..player.getHp(), 20, 560)
+      love.graphics.print("health: "..player.getHp(), 20, 560)
       love.graphics.print("hits to kill: " ..level, 20, 540)
+      love.graphics.print('kills: '.. player.getKillCount(), 20, 520)
 
       player.draw()
       for i = 1,#listabls do
@@ -600,7 +600,7 @@ function love.update(dt)
       -- print("listabls size:", #listabls)
       for i = 1,#listabls do
         if listabls[i].getInactiveTime() <= nowTime then
-          print("BLIP: HP:", listabls[i].getHp())
+--          print("BLIP: HP:", listabls[i].getHp())
           listabls[i].update()
         end
       end
