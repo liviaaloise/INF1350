@@ -8,9 +8,8 @@ local function newBlip (life)
   local inactiveTime = 0
   local clock = love.math.random(2, 4) / love.math.random(4, 6)
   local step = love.math.random(5, 12)
-  local health = life 
-  local initialLife = life
-  
+  local health = life
+
   local wait = function (seg)
     inactiveTime = love.timer.getTime() + seg
     coroutine.yield()
@@ -51,8 +50,7 @@ local function newBlip (life)
     getYL = function () return y + square_size end, -- Lower Y
     getHp = function () return health end,
     setHp = function (hp) health = health + hp end,
-    getInactiveTime = function () return inactiveTime end,
-    getLife = function() return initialLife end
+    getInactiveTime = function () return inactiveTime end
   }
 end
 
@@ -73,6 +71,7 @@ local function newPlayer ()
   local last_shot = 0
   local health = 10
   local kill_count = 0
+  local level = 1
 
   return {
     update = function (dt)
@@ -111,8 +110,6 @@ local function newPlayer ()
     incY = function (ny) y = y + ny end,
     getLastShot = function () return last_shot end,
     shoot_bullet = function () last_shot = love.timer.getTime() + fire_rate end,
-    getRectHeight = function () return rect_height end,
-    getRectWidth = function () return rect_width end,
     getHp = function () return health end,
     setHp = function (hp) health= health + hp end,
     incKillCount = function () kill_count = kill_count + 1 end,
@@ -121,6 +118,8 @@ local function newPlayer ()
     getFireRate = function () return fire_rate end,
     incFireRate = function (i) fire_rate = fire_rate + i end,
     incSpeed = function (vel) speed = speed + vel end,
+    getLV = function () return level end,
+    incLV = function () level = level + 1 end,
 
     draw = function ()
       love.graphics.rectangle("line", x, y, rect_width, rect_height)
@@ -193,12 +192,10 @@ local function newAttack (blipXM, blipYL)
   local speed_list = {0.025, 0.03, 0.035, 0.04, 0.045, 0.05}
   local random_speed = love.math.random(1, #speed_list)
   local speed = speed_list[random_speed]
-  -- local speed = 0.025 -- Blips shot speed
-  local status = true -- TODO: make use of 'status' becomes false if player its hit or if y >= height
+  local status = true
   local attack_wait = 0
   local width, height = love.graphics.getDimensions( )
   local playerDamadge = -1
-  local col = false
 
   local wait = function (seg)
     attack_wait = love.timer.getTime() + seg
@@ -314,10 +311,10 @@ local function newItem (sel, existence)
     if posX1 < x and posX2 > x then
       if posY1 < y and posY2 > y then
         active = false
-        if mode == "inc_speed" then player.incSpeed(0.3)
+        if mode == "inc_speed" then player.incSpeed(0.55)
         elseif mode == "inc_fire_rate" then
           if player.getFireRate() >= 0.1 then
-            player.incFireRate(-0.05)
+            player.incFireRate(-0.1)
           end
         elseif mode == "dec_fire_rate" then player.incFireRate(0.1)
         elseif mode == "dec_speed" then player.incSpeed(-0.3) end
@@ -389,7 +386,7 @@ local function newItemGenerator ()
   local function generate_item()
     while true do
       local sel = love.math.random(1,4)
-      local duration = love.math.random(3,15) -- time item will exists
+      local duration = love.math.random(5,15) -- time item will exists
       table.insert(lst,newItem(sel, duration))
       wait(item_respawn)
     end
@@ -444,13 +441,11 @@ function love.load()
   }
   titlemenu.width = titlemenu.play:getWidth()
   titlemenu.height = titlemenu.play:getHeight()
-  print(titlemenu.height, titlemenu.width)
 
 
   gamemode = "menu"
   pause = false
   help = false
-  level = 1
 
   --  Load Images
   bg = {image=love.graphics.newImage("bg.png"), x1=0, y1=0, x2=0, y2=0, width=0, height=0}
@@ -463,7 +458,7 @@ function love.load()
   bullets_list = {}
   listabls = {}
   for i = 1, 5 do
-    table.insert(listabls, newBlip(level*10))
+    table.insert(listabls, newBlip(10))
   end
   enemy_fire = newAttackList()
 end
@@ -485,8 +480,9 @@ function love.draw()
       love.graphics.draw(bg.image, bg.x1, bg.y1)
       love.graphics.draw(bg.image, bg.x2, bg.y2)
       love.graphics.setFont(font.normal)
-      love.graphics.print("HEALTH: "..player.getHp(), 20, 560)
-      love.graphics.print("hits to kill: " ..level, 20, 540)
+      love.graphics.print("health: "..player.getHp(), 20, 560)
+      love.graphics.print("hits to kill: " ..player.getLV(), 20, 540)
+      love.graphics.print('kills: '.. player.getKillCount(), 20, 520)
 
       player.draw()
       for i = 1,#listabls do
@@ -510,16 +506,6 @@ function love.draw()
   end
 
   if help then
-<<<<<<< HEAD
-		--draw help window
-		love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
-
-		--Cancel button
-    love.graphics.setFont(font.large)
-    love.graphics.print("Close help", 570, 505, 0, 1,1)
-
-	end
-=======
     --draw help window
     love.graphics.draw(helpImg, 200,100,0, 0.3,0.3)
 
@@ -528,7 +514,6 @@ function love.draw()
     love.graphics.print("Close help", 570, 505, 0, 1,1)
 
   end
->>>>>>> 4075342ca12c66856a6ae8c8c1756a5535993100
 end
 
 
@@ -537,7 +522,6 @@ function love.update(dt)
 
   if not pause then
     if gamemode == "play" then
-
       local nowTime = love.timer.getTime()
 
       -- Update Player
@@ -550,8 +534,6 @@ function love.update(dt)
       end
       local items_lst = item_generator.getItemsList()
       for i = #items_lst,1,-1 do
-        -- print("Player Speed:", player.getSpeed()) -- TODO Test print
-        -- print("Player Fire Rate:", player.getFireRate()) -- TODO Test print
         if items_lst[i].getInactiveTime() <= nowTime then
           local status = items_lst[i].update()
           if status == false then
@@ -560,28 +542,15 @@ function love.update(dt)
         end
       end
 
-<<<<<<< HEAD
-      print(#listabls)
-=======
-      -- Update blips
-      -- if blip_generator.getWaitTime() <= nowTime then
-      -- blip_generator.update()
-      -- end
-      -- local listabls = blip_generator.getBlipsList()
-
-      -- print("KILLS:", player.getKillCount())
-
-      -- print("listabls size:", #listabls)
->>>>>>> 4075342ca12c66856a6ae8c8c1756a5535993100
       for i = 1,#listabls do
         if listabls[i].getInactiveTime() <= nowTime then
           listabls[i].update()
         end
       end
       if #listabls == 0 then
-        local kills = player.getKillCount()
-        for i=1, kills do
-          level = kills/5
+        player.incLV()
+        local level = player.getLV()
+        for i=1, 5*level do
           listabls[i] = newBlip(level * 10 )
         end
       end
@@ -616,26 +585,6 @@ function love.update(dt)
 end
 
 function love.mousereleased(x, y, button)
-<<<<<<< HEAD
-	if pause == false then
-	    if button == 1 then
-	        if gamemode == "menu" and not help then
-	            if x >= 440-titlemenu.width/2 and x <= 360+titlemenu.width/2 then
-                  if y >= 180 and y <= titlemenu.height+20 then
-	                    gamemode = "play"
-                  elseif y >= titlemenu.height + 110 and y <= titlemenu.height*2 - 60 then
-	                    help = true
-	                end
-	            end
-	        elseif help then
-              if x >= 570 and x <= 770 and y >= 505 and y <= 555 then
-	                help = false
-	            end
-	        end
-
-	    end
-	end
-=======
   if pause == false then
     if button == 1 then
       if gamemode == "menu" and not help then
@@ -654,5 +603,4 @@ function love.mousereleased(x, y, button)
 
     end
   end
->>>>>>> 4075342ca12c66856a6ae8c8c1756a5535993100
 end
