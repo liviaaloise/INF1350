@@ -1,11 +1,12 @@
 led1 = 3
 led2 = 6
 local meusleds = {led1, led2}
+--local json = require 'json'
 
 -- local chave = "897798401:AAGPcPo2wb3c-mWQA29dmIgJjHcsM5q8Gik"
 -- local id_da_conversa = "694058925"
--- local endereco_base = "https://api.telegram.org/bot897798401:AAGPcPo2wb3c-mWQA29dmIgJjHcsM5q8Gik/getUpdates"
-local endereco_base = "http://dontpad.com/reativos_mcu_teste_1421229"
+local endereco_base = "https://api.telegram.org/bot897798401:AAGPcPo2wb3c-mWQA29dmIgJjHcsM5q8Gik/getUpdates"
+-- local endereco_base = "http://dontpad.com/reativos_mcu_teste_1421229"
 
 
 for _,ledi in ipairs (meusleds) do
@@ -54,6 +55,12 @@ function readlux()
 -- Se lastlux <= 60 OK (iluminar com lanterna)!
 -- TODO: identificar piscadas
   lastlux = adc.read(0)/10
+  if lastlux <= 60.0 then
+    gpio.write(led1, gpio.HIGH);
+  else
+    gpio.write(led1, gpio.LOW);
+  end
+
 
 end
 
@@ -64,10 +71,10 @@ function getMessages()
     if (code < 0) then
       print("HTTP request failed")
     else
-       -- dicionario_da_resposta = json:encode(data)
-       -- for i=1, #dicionario_da_resposta["result"] do
-       --        print(dicionario_da_resposta["result"][i]["message"]["text"])
-       -- end
+      -- dicionario_da_resposta = json.encode(data)
+      -- for i=1, #dicionario_da_resposta["result"] do
+      --   print(dicionario_da_resposta["result"][i]["message"]["text"])
+      -- end
       -- print(code, dicionario_da_resposta)
       print(code, data)
     end
@@ -124,7 +131,7 @@ local buf = [[
 <h1><u>PUC Rio</u></h1>
 <h2><i>ESP8266 Web Server</i></h2>
         <p> Telegram <a href="?pin=TELEGRAM"><button><b>REFRESH</b></button></a>
-        <p>Iluminacao: $LUZ oC <a href="?pin=LERLUZ"><button><b>REFRESH</b></button></a>
+        <p>Iluminacao: $LUZ lx <a href="?pin=LERLUZ"><button><b>REFRESH</b></button></a>
         <p>PISCA LED 1: $STLED1  <a href="?pin=LIGA1"><button><b>ON</b></button></a>
                             <a href="?pin=DESLIGA1"><button><b>OFF</b></button></a></p>
         <p>PISCA LED 2: $STLED2  <a href="?pin=LIGA2"><button><b>ON</b></button></a>
@@ -134,14 +141,13 @@ local buf = [[
 ]]
 
 
-  buf = string.gsub(buf, "$(%w+)", vals)
-  sck:send(buf,
-           function()  -- callback: fecha o socket qdo acabar de enviar resposta
-             print("respondeu")
-             sck:close()
-           end)
-
-end
+buf = string.gsub(buf, "$(%w+)", vals)
+sck:send(buf,
+         function()  -- callback: fecha o socket qdo acabar de enviar resposta
+           print("respondeu")
+           sck:close()
+         end)
+       end
 
 if srv then
   srv:listen(80, function(conn)
