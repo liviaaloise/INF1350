@@ -1,3 +1,6 @@
+package.loaded.email_communication = nil
+local email = require 'email_communication'
+
 local led1 = 3
 local led2 = 6
 local sw1 = 1
@@ -8,10 +11,11 @@ local wifi_ssid = "********************"
 local wifi_pwd = "********************"
 local ifttt_API_url = "********************"
 
--- gpio.mode(led1, gpio.OUTPUT)
--- gpio.mode(led2, gpio.OUTPUT)
--- gpio.write(led1, gpio.LOW)
--- gpio.write(led2, gpio.LOW)
+
+ gpio.mode(led1, gpio.OUTPUT)
+ gpio.mode(led2, gpio.OUTPUT)
+ gpio.write(led1, gpio.LOW)
+ gpio.write(led2, gpio.LOW)
 gpio.mode(sw1,gpio.INT,gpio.PULLUP)
 gpio.mode(sw2,gpio.INT,gpio.PULLUP)
 
@@ -36,27 +40,6 @@ function post_tweet (lastlux)
   end)
 end
 
--- -- TODO TCP communication not working to send http POST... using http.post method above
--- local json = require "json"
--- conn = nil
--- conn=net.createConnection(net.TCP, 0)
--- conn:on("receive", function(conn, payload) end)
--- conn:connect(80,"maker.ifttt.com")
--- t = {
---   value1 = 30
--- }
--- message = json.enconde(t)
--- conn:on("connection", function(conn, payload)
---   conn:send("POST /trigger/post_tweet/with/key/<API-KEY> HTTP/1.1\r\n"
---   .. "Host: maker.ifttt.com\r\n"
---   .. "Connection: close\r\n"
---   .. "Accept: */*\r\n"
---   .. "Content-Type: application/json\r\n"
---   .. "Content-Length: " .. string.len(message) .. "\r\n\r\n"
---   .. message)
--- end)
--- conn:close()
--- print('Posted Tweet')
 
 function pressedButton1 (_, contador)
   local lastlux = readlux()
@@ -64,11 +47,18 @@ function pressedButton1 (_, contador)
   post_tweet (lastlux)
 end
 
+function pressedButton2 ()
+  local lastlux = readlux()
+  print("But2 Pressed!\tlx = " .. lastlux)
+  email.send(lastlux)
+end
+
 -- Set nodeMCU as a wifi.STATION
 wifi.setmode(wifi.STATION)
 wifi.sta.config({ssid=wifi_ssid, pwd=wifi_pwd})
 
 gpio.trig(sw1, "down", pressedButton1)
+gpio.trig(sw2, "down", pressedButton2)
 
 -- TODO use timers...
 -- local lux_timer = tmr.create() -- 0.1 sec
