@@ -81,10 +81,23 @@ function email_send(brightness)
   end)
 end
 
+function sendTelegram(brightness)
+  local telegramKey = "by8p5qlIYimy6XPxB1xU5J"
+  local telegram_post_url = "https://maker.ifttt.com/trigger/sendMessage/with/key/" .. telegramKey .. "?value1=" .. tostring(brightness)
+  http.post(telegram_post_url, nil, function(code, data)
+  if (code < 0) then
+      print("HTTP request failed")
+  else
+      print(code, "Email Sent")
+  end
+end)
+end
+
 function pressedButton1 ()
   local lastlux = readlux()
   print("But1 Pressed! Posting tweet...\n\tlx = " .. lastlux)
   post_tweet (lastlux)
+  sendTelegram (lastlux)
 end
 
 function pressedButton2 ()
@@ -94,8 +107,8 @@ function pressedButton2 ()
 end
 
 -- Set nodeMCU as a wifi.STATION
-wifi.setmode(wifi.STATION)
-wifi.sta.config({ssid=wifi_ssid, pwd=wifi_pwd})
+--wifi.setmode(wifi.STATION)
+--wifi.sta.config({ssid=wifi_ssid, pwd=wifi_pwd})
 
 gpio.trig(sw1, "down", pressedButton1)
 gpio.trig(sw2, "down", pressedButton2)
