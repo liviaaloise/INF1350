@@ -90,7 +90,6 @@ function post_tweet (lastlux)
 end
 
 function email_send(brightness)
-  local email_key = "by8p5qlIYimy6XPxB1xU5J"
   local email_post_url = "https://maker.ifttt.com/trigger/trigger2/with/key/" .. email_key .. "?value1=" .. tostring(brightness)
   http.post(email_post_url, nil, function(code, data)
     if (code < 0) then
@@ -125,10 +124,22 @@ function get_weather()
   end)
 end
 
+function sendTelegram(brightness)
+  local telegram_post_url = "https://maker.ifttt.com/trigger/sendMessage/with/key/" .. telegramKey .. "?value1=" .. tostring(brightness)
+  http.post(telegram_post_url, nil, function(code, data)
+    if (code < 0) then
+        print("HTTP request failed")
+    else
+        print(code, "Email Sent")
+    end
+  end)
+end
+
 function pressedButton1 ()
   local lastlux = readlux()
   print("But1 Pressed! Posting tweet...\n\tlx = " .. lastlux)
   -- post_tweet (lastlux) -- TODO ---> UNDO
+  -- sendTelegram (lastlux) -- TODO ---> UNDO
 
   get_weather()
 end
